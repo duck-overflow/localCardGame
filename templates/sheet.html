@@ -7,8 +7,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/sheet.css') }}">
 </head>
 <body>
-    <div class="quick-sheet">
-        <div class="header">
+    <div class="container">
+        <div class="main">
+          <div class="header">
             <h1>Character Sheet</h1>
         </div>
         <div class="attributes">
@@ -52,6 +53,7 @@
               <button class="arrow up" onclick="adjustScore('swimming', 1)">&#9654;</button>
             </div>
           </div>
+        </div>
     </div>
     <script src="{{ url_for('static', filename='sheet.js') }}"></script>
 </body>

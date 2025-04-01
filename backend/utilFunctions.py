@@ -1,4 +1,5 @@
 import os
+from os import listdir
 
 from backend.database import search_player_data, verify_player_data, transform_username_id, get_card_amount
 
@@ -24,3 +25,8 @@ def check_matching(username, password):
         return True
     else:
         return False
+    
+def delete_sessions():
+    my_path = 'flask_session/'
+    for file_name in listdir(my_path):
+        os.remove(my_path + file_name)
