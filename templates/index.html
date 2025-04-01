@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Test</title>
+</head>
+<body>
+    <!-- Hinweis -->
+    <p id="loginResponse"></p>
+
+    <!-- Hier war das aus temp.md -->
+
+    <!-- Bilder -->
+    <img src="{{ url_for('static', filename='assetsFolder/Cards/Default_01.jpg') }}" alt="Beispielbild" style="width: 20vw; min-width: none;">
+    <p><a href="/cards">Zur Karten-Galerie</a></p>
+
+    <!-- Skript laden -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
