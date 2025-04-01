@@ -3,23 +3,42 @@
 <head>
     <title>Admin Page</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/admin.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='admin.js') }}"></script>
 </head>
 
 <body>
     <div class="container">
         <h1>Admin Panel</h1>
         <div class="main">
-            <div class="online_player">
-                <h2>{{ curUsers }} / {{ maxUsers }}</h2>
-                <hr>
-                {% for user in users %}
-                    <div class="user">
-                        <p>{{ user }}</p>
+            <div id="parent">
+                <div class="online_player central_div" id="narrow">
+                    <h2>Online</h2>
+                    <h3 id="userCount">{{ curUsers }} / {{ maxUsers }}</h3>
+                    <hr>
+                    <div id="userList">
+                        {% for user in users %}
+                            <div class="user" id="userFormat">
+                                <p>{{ user }}</p>
+                            </div>
+                        {% endfor %}
                     </div>
-                {% endfor %}
+                </div>
+                <div class="general_players central_div" id="wide">
+                    <h2>Playerlist</h2>
+                    <h3 id="allUsers">User-Count</h3>
+                    <hr>
+                    <div id="alluserList">
+                        {% for user in allUsers %}
+                            <div class="users" id="userFormat">
+                                <p>{{ user }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
-
-            <a href="{{ url_for('home') }}">Back Home</a>
+            <br>
+            <a href="{{ url_for('home') }}" id="shadow">Back Home</a>
         </div>
     </div>
 

@@ -20,17 +20,34 @@ body {
     background: #24243e;
 }
 
-.online_player {
-    width: 100px;
+#parent {
+    display: flex;
+    column-gap: 20px;
+}
+
+
+.central_div {
     padding: 20px;
     background: #eee;
     border-radius: 15px;
-    box-shadow: 5px 20px 50px #000;
+    box-shadow: 5px 10px 20px #000;
     text-align: center;
     background: #573b8a;
 }
 
-.user {
+#shadow {
+    box-shadow: 5px 10px 20px #000;
+}
+
+#narrow {
+    width: 100px;
+}
+
+#wide {
+    flex: 1;
+}
+
+#userFormat {
     background: #24243e;
     border-radius: 15px;
 }

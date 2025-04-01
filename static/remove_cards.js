@@ -12,7 +12,7 @@ function remove_card() {
     var pElement = $(this).closest('.card').find('p');
 
     var cMatch = cardName.match(/_(\d+)_/);
-    var pMatch = pElement.text().match(/^Verwendung (\d+) \/ (\d+)$/);
+    var pMatch = pElement.text().match(/^Usage (\d+) \/ (\d+)$/);
     if (cMatch) var cVerwendung = parseInt(cMatch[1]);
     if (pMatch) var pVerwendung = parseInt(pMatch[1]);
     
@@ -26,7 +26,7 @@ function remove_card() {
                 document.getElementById("karten_title").innerHTML = response.message;
             }
             if (pMatch) {
-                pElement.text(`Verwendung ${pVerwendung - 1} / ${cVerwendung}`);
+                pElement.text(`Usage ${pVerwendung - 1} / ${cVerwendung}`);
             }
             if (pVerwendung - 1 == 0) {
                 cardElement.fadeOut(500, function() {

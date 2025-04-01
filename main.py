@@ -1,8 +1,9 @@
 from flask import Flask, request, render_template, redirect, session, url_for, jsonify
 from flask_session import Session
+from flask_socketio import SocketIO
 from backend.playerData import Player
 from backend.utilFunctions import get_image_list, test_name_availability, check_matching, delete_sessions
-from backend.database import get_everything_player, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count
+from backend.database import get_everything_player, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count, get_player_names
 
 app = Flask(__name__, static_folder='static')
 
@@ -12,8 +13,10 @@ app.config['SESSION_KEY'] = 'your_secret_key'
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
+socketio = SocketIO(app, manage_session=False)
+
 #reset_data()
-#delete_sessions()
+delete_sessions()
 
 @app.route('/reglog')
 def open_reg_log():
@@ -35,8 +38,15 @@ def register():
         add_player_data(playerInfo[0], playerInfo[1], playerInfo[2])
         get_everything_player()
 
+        result = get_player_names()
+        player_list = []
+        for x in range(0, len(result)):
+            player_list.append(result[x][0])
+
         session['username'] = username
         loggedUsers.append(username)
+        socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
+        socketio.emit('update_user_list', {'users': player_list})
         return redirect(url_for('home'))
     return redirect(url_for('open_reg_log'))
 
@@ -51,6 +61,9 @@ def login():
         if check_matching(username, password):
             session['username'] = username
             loggedUsers.append(username)
+
+            socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
+
             return redirect(url_for('home'))
 
     return redirect(url_for('open_reg_log'))
@@ -147,21 +160,27 @@ def open_sheet():
 @app.route('/admin')
 def admin():
     user = session.get('username')
+
     if user is None:
         return redirect(url_for('open_reg_log'))
     elif user != 'admin':
         return redirect(url_for('home'))
     else:
-        return render_template('admin.html', users=loggedUsers, curUsers=len(loggedUsers), maxUsers=get_player_count())
+        result = get_player_names()
+        player_list = []
+        for x in range(0, len(result)):
+            player_list.append(result[x][0])
+        return render_template('admin.html', users=loggedUsers, curUsers=len(loggedUsers), maxUsers=get_player_count(), allUsers=player_list)
 
 @app.route('/logout')
 def logout():
     # Löscht den Benutzernamen aus der Session und loggt den Benutzer aus
     loggedUsers.remove(session['username'])
+    socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
     session.pop('username', None)
     return redirect(url_for('open_reg_log'))
 
 
 if __name__ == '__main__':
-    # app.run(debug=True)
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    #app.run(debug=True)
+    socketio.run(app, host='0.0.0.0', port=8080, debug=True)

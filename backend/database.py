@@ -91,6 +91,12 @@ def get_player_count():
     res = cur.execute(cmd)
     return res.fetchone()[0]
 
+def get_player_names():
+    cmd = 'SELECT username FROM player'
+    res = cur.execute(cmd)
+    result = res.fetchall()
+    return result
+
 # Deck Data
 
 def get_everything_card():
