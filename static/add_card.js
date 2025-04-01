@@ -8,6 +8,7 @@ $(document).ready(function () {
 
 
 function add_card() {
+    var cardElement = $(this).closest('.card');
     var cardName = $(this).data('card');
     var pElement = $(this).closest('.card').find('p');
     
@@ -27,8 +28,19 @@ function add_card() {
                 document.getElementById("karten_title").innerHTML = response.message;
             }
 
-            if (response.redirect_url) {
-                window.location.href = response.redirect_url;
+            if (response.remove_card) {
+                cardElement.fadeOut(500, function() {
+                    $(this).remove();
+                });
+            }
+
+            if (pMatch) {
+                pElement.text(`Verwendung ${pVerwendung + 1} / ${cVerwendung}`);
+            }
+            if (pVerwendung + 1 >= cVerwendung) {
+                cardElement.fadeOut(500, function() {
+                    $(this).remove();
+                });
             }
         },
         error: function (xhr) {

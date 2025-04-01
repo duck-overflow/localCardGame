@@ -2,7 +2,7 @@ from flask import Flask, request, render_template, redirect, session, url_for, j
 from flask_session import Session
 from backend.playerData import Player
 from backend.utilFunctions import get_image_list, test_name_availability, check_matching
-from backend.database import get_everything_player, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data
+from backend.database import get_everything_player, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount
 
 app = Flask(__name__, static_folder='static')
 
@@ -80,7 +80,7 @@ def add_card(card_name):
 def deck():
     #Zeigt alle Karten an
     user = session.get('username')
-    if (user == None):
+    if user == None:
         return redirect(url_for('open_reg_log'))
     else:
         card_usage = get_card_count(user)
@@ -89,31 +89,48 @@ def deck():
 @app.route('/add_card_to_deck/<card_name>', methods=['POST'])
 def add_card_to_deck(card_name):
     user = session.get('username')
-    if (user == None):
+    if user == None:
         return redirect(url_for('open_reg_log'))
     else:
         # Check if card can be added
         
+        max_amount = card_name.rsplit('_', 2)[1]
+        cur_amount = get_card_amount(user, card_name)[0][0]
+
+        if cur_amount >= int(max_amount):
+            return jsonify({
+                "error": "Maximale Nutzung erreicht!",
+                "remove_card": True
+            })
+
         add_deck_data(user, card_name)
         size_cards = get_deck_amount(user)
 
         return jsonify({
-            "message": f"Kartenauswahl {size_cards} / 50",
-            "redirect_url": url_for('cards')
+            "message": f"Kartenauswahl {size_cards} / 50"
         })
 
 @app.route('/remove_card_from_deck/<card_name>', methods=['POST'])
 def remove_card_from_deck(card_name):
     user = session.get('username')
-    if (user == None):
+    if user == None:
         return redirect(url_for('open_reg_log'))
     else:
+
+        cur_amount = get_card_amount(user, card_name)[0][0]
+        
         delete_deck_data(user, card_name)
         size_cards = get_deck_amount(user)
 
+        if (size_cards == 0):
+            return jsonify({
+                "error": "Maximale Nutzung erreicht!",
+                "message": "Kartenauswahl",
+                "remove_card": True
+            })
+        
         return jsonify({
-            "message": f"Kartenauswahl {size_cards} / 50" if size_cards > 0 else 'Kartenauswahl',
-            "redirect_url": url_for('deck')
+            "message": f"Kartenauswahl {size_cards} / 50"
         })
 
 @app.route('/card_dragger')
