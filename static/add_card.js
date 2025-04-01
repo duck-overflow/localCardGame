@@ -27,13 +27,6 @@ function add_card() {
             if (response.message) {
                 document.getElementById("karten_title").innerHTML = response.message;
             }
-
-            if (response.remove_card) {
-                cardElement.fadeOut(500, function() {
-                    $(this).remove();
-                });
-            }
-
             if (pMatch) {
                 pElement.text(`Verwendung ${pVerwendung + 1} / ${cVerwendung}`);
             }

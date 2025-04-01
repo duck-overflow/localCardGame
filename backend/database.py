@@ -34,46 +34,50 @@ def get_everything_player():
 
 def get_all_player_data(player):
     player_id = transform_username_id(player)
-    cmd = f'SELECT * FROM player WHERE id LIKE {player_id}'
-    print(cmd)
+    cmd = 'SELECT * FROM player WHERE id LIKE ?'
+    print(cmd, (player_id,))
     res = cur.execute(cmd)
     return res.fetchall()
 
 def get_player_data(data, player):
     player_id = transform_username_id(player)
-    cmd = f'SELECT {data} FROM player WHERE id LIKE {player_id}'
-    print(cmd)
+    cmd = f'SELECT ? FROM player WHERE id LIKE ?'
+    print(cmd, (data, player_id))
     res = cur.execute(cmd)
     return res.fetchall()
 
 def search_player_data(data):
-    cmd = f'SELECT * FROM player WHERE username LIKE "{data}"'
+    cmd = f'SELECT * FROM player WHERE username LIKE ?'
     print(cmd)
-    res = cur.execute(cmd)
+    res = cur.execute(cmd, (data,))
     return res.fetchall()
 
 def transform_username_id(username):
-    cmd = f'SELECT id FROM player WHERE username LIKE "{username}"'
-    res = cur.execute(cmd)
-    x = res.fetchall()[0][0]
-    return x
+    with con:
+        cur_new = con.cursor()
+        cmd = 'SELECT id FROM player WHERE username LIKE ?'
+        res = cur_new.execute(cmd, (username,))
+        result = res.fetchone()
+    if result:
+        return result[0]
+    raise ValueError(f'User {username} not found.')
 
 def verify_player_data(username, password):
-    cmd = f'SELECT * FROM player WHERE username LIKE "{username}" AND password LIKE "{password}"'
+    cmd = 'SELECT * FROM player WHERE username LIKE ? AND password LIKE ?'
     print(cmd)
-    res = cur.execute(cmd)
+    res = cur.execute(cmd, (username, password))
     return res.fetchall()
 
 def add_player_data(username, password, player_id):
-    cmd = f'INSERT INTO player VALUES("{username}", "{password}", {player_id})'
+    cmd = 'INSERT INTO player VALUES(?, ?, ?)'
     print(cmd)
-    cur.execute(cmd)
+    cur.execute(cmd, (username, password, player_id))
     con.commit()
 
 def delete_player_data(player):
     player_id = transform_username_id(player)
-    cmd = f'DELETE FROM player WHERE id LIKE "{player_id}"'
-    cur.execute(cmd)
+    cmd = 'DELETE FROM player WHERE id LIKE ?'
+    cur.execute(cmd, (player_id,))
     con.commit()
 
 def get_last_id():
@@ -91,8 +95,8 @@ def get_everything_card():
 
 def get_deck_data(player):
     player_id = transform_username_id(player)
-    cmd = f'SELECT * FROM deck WHERE id LIKE "{player_id}"'
-    res = cur.execute(cmd)
+    cmd = f'SELECT * FROM deck WHERE id LIKE ?'
+    res = cur.execute(cmd, (player_id,))
     return res.fetchall()
 
 def add_deck_data(player, card_name):

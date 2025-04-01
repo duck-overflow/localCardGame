@@ -10,7 +10,7 @@ app.config['SESSION_KEY'] = 'your_secret_key'
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
-# reset_data()
+#reset_data()
 
 @app.route('/reglog')
 def open_reg_log():
@@ -93,19 +93,16 @@ def add_card_to_deck(card_name):
         return redirect(url_for('open_reg_log'))
     else:
         # Check if card can be added
-        
+        print(user)
         max_amount = card_name.rsplit('_', 2)[1]
         cur_amount = get_card_amount(user, card_name)[0][0]
-
         if cur_amount >= int(max_amount):
             return jsonify({
                 "error": "Maximale Nutzung erreicht!",
                 "remove_card": True
             })
-
         add_deck_data(user, card_name)
         size_cards = get_deck_amount(user)
-
         return jsonify({
             "message": f"Kartenauswahl {size_cards} / 50"
         })
@@ -117,18 +114,15 @@ def remove_card_from_deck(card_name):
         return redirect(url_for('open_reg_log'))
     else:
 
-        cur_amount = get_card_amount(user, card_name)[0][0]
-        
         delete_deck_data(user, card_name)
+        cur_amount = get_card_amount(user, card_name)[0][0]
         size_cards = get_deck_amount(user)
-
-        if (size_cards == 0):
+        if (cur_amount == 0):
             return jsonify({
                 "error": "Maximale Nutzung erreicht!",
-                "message": "Kartenauswahl",
+                "message": f"Kartenauswahl {size_cards} / 50",
                 "remove_card": True
             })
-        
         return jsonify({
             "message": f"Kartenauswahl {size_cards} / 50"
         })
