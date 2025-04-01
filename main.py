@@ -2,16 +2,18 @@ from flask import Flask, request, render_template, redirect, session, url_for, j
 from flask_session import Session
 from backend.playerData import Player
 from backend.utilFunctions import get_image_list, test_name_availability, check_matching, delete_sessions
-from backend.database import get_everything_player, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount
+from backend.database import get_everything_player, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count
 
 app = Flask(__name__, static_folder='static')
+
+loggedUsers = []
 
 app.config['SESSION_KEY'] = 'your_secret_key'
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
 #reset_data()
-delete_sessions()
+#delete_sessions()
 
 @app.route('/reglog')
 def open_reg_log():
@@ -34,6 +36,7 @@ def register():
         get_everything_player()
 
         session['username'] = username
+        loggedUsers.append(username)
         return redirect(url_for('home'))
     return redirect(url_for('open_reg_log'))
 
@@ -47,6 +50,7 @@ def login():
 
         if check_matching(username, password):
             session['username'] = username
+            loggedUsers.append(username)
             return redirect(url_for('home'))
 
     return redirect(url_for('open_reg_log'))
@@ -55,12 +59,12 @@ def login():
 def dashboard():
     if 'username' not in session:
         return redirect(url_for('open_reg_log'))
-    return f'Willkommen, {session["username"]}!'
+    return f'Welcome, {session["username"]}!'
 
 @app.route('/')
 def home():
     user = session.get('username')
-    if (user == None):
+    if user is None:
         return redirect(url_for('open_reg_log'))
     else:
         return render_template('home.html', user=user)
@@ -69,7 +73,7 @@ def home():
 def cards():
     #Zeigt alle Karten an
     user = session.get('username')
-    if (user == None):
+    if user is None:
         return redirect(url_for('open_reg_log'))
     else:
         return render_template('cards.html', size_cards=get_deck_amount(user), card_usage=get_image_list(app, user))
@@ -81,7 +85,7 @@ def add_card(card_name):
 def deck():
     #Zeigt alle Karten an
     user = session.get('username')
-    if user == None:
+    if user is None:
         return redirect(url_for('open_reg_log'))
     else:
         card_usage = get_card_count(user)
@@ -90,7 +94,7 @@ def deck():
 @app.route('/add_card_to_deck/<card_name>', methods=['POST'])
 def add_card_to_deck(card_name):
     user = session.get('username')
-    if user == None:
+    if user is None:
         return redirect(url_for('open_reg_log'))
     else:
         # Check if card can be added
@@ -99,19 +103,19 @@ def add_card_to_deck(card_name):
         cur_amount = get_card_amount(user, card_name)[0][0]
         if cur_amount >= int(max_amount):
             return jsonify({
-                "error": "Maximale Nutzung erreicht!",
+                "error": "Maximum use achieved!",
                 "remove_card": True
             })
         add_deck_data(user, card_name)
         size_cards = get_deck_amount(user)
         return jsonify({
-            "message": f"Kartenauswahl {size_cards} / 50"
+            "message": f"Card selection {size_cards} / 50"
         })
 
 @app.route('/remove_card_from_deck/<card_name>', methods=['POST'])
 def remove_card_from_deck(card_name):
     user = session.get('username')
-    if user == None:
+    if user is None:
         return redirect(url_for('open_reg_log'))
     else:
 
@@ -120,12 +124,12 @@ def remove_card_from_deck(card_name):
         size_cards = get_deck_amount(user)
         if (cur_amount == 0):
             return jsonify({
-                "error": "Maximale Nutzung erreicht!",
-                "message": f"Kartenauswahl {size_cards} / 50",
+                "error": "Maximum use achieved!",
+                "message": f"Card selection {size_cards} / 50",
                 "remove_card": True
             })
         return jsonify({
-            "message": f"Kartenauswahl {size_cards} / 50"
+            "message": f"Card selection {size_cards} / 50"
         })
 
 @app.route('/card_dragger')
@@ -135,14 +139,25 @@ def open_carddragger():
 @app.route('/sheet')
 def open_sheet():
     user = session.get('username')
-    if (user == None):
+    if user is None:
         return redirect(url_for('open_reg_log'))
     else:
         return render_template('sheet.html')
 
+@app.route('/admin')
+def admin():
+    user = session.get('username')
+    if user is None:
+        return redirect(url_for('open_reg_log'))
+    elif user != 'admin':
+        return redirect(url_for('home'))
+    else:
+        return render_template('admin.html', users=loggedUsers, curUsers=len(loggedUsers), maxUsers=get_player_count())
+
 @app.route('/logout')
 def logout():
     # Löscht den Benutzernamen aus der Session und loggt den Benutzer aus
+    loggedUsers.remove(session['username'])
     session.pop('username', None)
     return redirect(url_for('open_reg_log'))
 

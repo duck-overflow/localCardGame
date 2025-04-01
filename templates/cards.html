@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karten-Galerie</title>
+    <title>Card gallery</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/cards.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{{ url_for('static', filename='add_card.js') }}"></script>
@@ -16,18 +16,18 @@
             <div class="header-content">
                 <h1>Card Icons</h1>
                 {% if size_cards %}
-                <h2 id="karten_title">Kartenauswahl {{ size_cards }} / 50</h2>
+                <h2 id="karten_title">Card selection {{ size_cards }} / 50</h2>
                 {% else %}
-                <h2 id="karten_title">Kartenauswahl</h2>
+                <h2 id="karten_title">Card selection</h2>
                 {% endif %}
-                <p><a href="/" class="back-button">Zurück zur Startseite</a></p>
+                <p><a href="/" class="back-button">Back to the homepage</a></p>
             </div>
         </header>
         <div class="card-container">
             {% for image, usage in card_usage %}
             <div class="card">
                 <img src="{{ url_for('static', filename='assetsFolder/Cards/' + image) }}" alt="{{ image }}" class="add-card" data-card="{{ image }}">
-                <p>Verwendung {{ usage }} / {{ image.rsplit('_', 2)[1] }}</p>
+                <p>Usage {{ usage }} / {{ image.rsplit('_', 2)[1] }}</p>
             </div>
             {% endfor %}
         </div>

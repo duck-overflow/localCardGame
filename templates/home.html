@@ -8,12 +8,15 @@
 
 <body>
     <div class="container">
-        <h1>Willkommen {% if user %}{{ user }}{% else %}Gast{% endif %}!</h1>
+        <h1>Welcome {% if user %}{{ user }}{% else %}Gast{% endif %}!</h1>
         <div class="main">
-            <a href="{{ url_for('cards') }}">Karten auswählen</a>
-            <a href="{{ url_for('deck') }}">Aktuelles Deck ansehen</a>
+            {% if user == 'admin' %}
+                <a href="{{ url_for('admin') }}">Admin Panel</a>
+            {% endif %}
+            <a href="{{ url_for('cards') }}">Choose cards</a>
+            <a href="{{ url_for('deck') }}">View current deck</a>
             <a href="{{ url_for('open_carddragger') }}">Card Dragger Test</a>
-            <a href="{{ url_for('open_sheet') }}">Sheet</a>
+            <a href="{{ url_for('open_sheet') }}">Character sheet</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>

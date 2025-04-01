@@ -23,7 +23,7 @@ def create_admin_user():
     adminPlayer = Player("admin", "Start123")
     playerInfo = adminPlayer.to_array()
     add_player_data(playerInfo[0], playerInfo[1], playerInfo[2])
-    print("<-- Admin Spieler erstellt! --> \n Username: admin \n Password: Start123")
+    print("<-- Created Admin Player! --> \n Username: admin \n Password: Start123")
 
 # Player Data
 
@@ -85,6 +85,11 @@ def get_last_id():
     res = cur.execute(cmd)
     digits = re.match(r'\((\d+),\)', str(res.fetchall()[0]))
     return int(digits.group(1))
+
+def get_player_count():
+    cmd = 'SELECT COUNT(*) FROM player'
+    res = cur.execute(cmd)
+    return res.fetchone()[0]
 
 # Deck Data
 
