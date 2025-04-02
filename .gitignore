@@ -1,6 +1,6 @@
-/backend/__pycache__
-/bin
-/flask_session
-/lib
-/static/assetsFolder
+backend/__pycache__/
+bin/
+flask_session/
+lib/
+static/assetsFolder/
 test.py
