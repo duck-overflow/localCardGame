@@ -20,53 +20,6 @@ body {
     background: #24243e;
 }
 
-#parent {
-    display: flex;
-    column-gap: 20px;
-}
-
-
-.central_div {
-    padding: 20px;
-    background: #eee;
-    border-radius: 15px;
-    box-shadow: 5px 10px 20px #000;
-    text-align: center;
-    background: #573b8a;
-}
-
-#shadow {
-    box-shadow: 5px 10px 20px #000;
-}
-
-#narrow {
-    width: 100px;
-}
-
-#wide {
-    flex: 1;
-}
-
-#userFormat {
-    background: #24243e;
-    border-radius: 15px;
-}
-
-#userFormatLink {
-    display: block;
-    text-decoration: none;
-    background: #24243e;
-    color: #fff;
-    padding: 10px;
-    border-radius: 15px;
-    margin: 10px 0;
-    transition: background 0.3s;
-}
-
-#userFormatLink:hover {
-    background: #6d44b8;
-}
-
 .container {
     display: flex;
     flex-direction: column; /* Sorgt für eine vertikale Anordnung */

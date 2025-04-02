@@ -1,5 +1,13 @@
 var socket = io();
 
+$(document).ready(function () {
+    $('.user').on('click touchstart', function (event) {
+        event.preventDefault();
+        var player = $(this).closest('.users').find('a').text();
+        window.open('/user-settings/' + player, '_blank');
+    });
+});
+
 socket.on("update_admin_panel", function (data) {
     let userList = document.getElementById("userList");
     let userCount = document.getElementById("userCount");

@@ -36,7 +36,7 @@ def get_all_player_data(player):
     player_id = transform_username_id(player)
     cmd = 'SELECT * FROM player WHERE id LIKE ?'
     print(cmd, (player_id,))
-    res = cur.execute(cmd)
+    res = cur.execute(cmd, (player_id,))
     return res.fetchall()
 
 def get_player_data(data, player):
@@ -46,10 +46,10 @@ def get_player_data(data, player):
     res = cur.execute(cmd)
     return res.fetchall()
 
-def search_player_data(data):
+def search_player_data(username):
     cmd = f'SELECT * FROM player WHERE username LIKE ?'
     print(cmd)
-    res = cur.execute(cmd, (data,))
+    res = cur.execute(cmd, (username,))
     return res.fetchall()
 
 def transform_username_id(username):

@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Page</title>
+    <title>Roads of Fate - Admin Page</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/admin.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
     <script src="{{ url_for('static', filename='admin.js') }}"></script>
 </head>
@@ -31,7 +32,7 @@
                     <div id="alluserList">
                         {% for user in allUsers %}
                             <div class="users" id="userFormat">
-                                <p>{{ user }}</p>
+                                <a id="userFormatLink" class="user">{{ user }}</a>
                             </div>
                         {% endfor %}
                     </div>

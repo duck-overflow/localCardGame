@@ -3,7 +3,7 @@ from flask_session import Session
 from flask_socketio import SocketIO
 from backend.playerData import Player
 from backend.utilFunctions import get_image_list, test_name_availability, check_matching, delete_sessions
-from backend.database import get_everything_player, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count, get_player_names
+from backend.database import get_everything_player, get_all_player_data, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count, get_player_names
 
 app = Flask(__name__, static_folder='static')
 
@@ -171,6 +171,21 @@ def admin():
         for x in range(0, len(result)):
             player_list.append(result[x][0])
         return render_template('admin.html', users=loggedUsers, curUsers=len(loggedUsers), maxUsers=get_player_count(), allUsers=player_list)
+
+@app.route('/user-settings/<username>', methods=['GET'])
+def userSettings(username):
+    user = session.get('username')
+    if user is None:
+        return redirect(url_for('open_reg_log'))
+    elif user != 'admin':
+        return redirect(url_for('home'))
+    else:
+        playerData = get_all_player_data(username)
+        return render_template('user_settings.html', playerData={
+        "username": playerData[0][0],
+        "password": playerData[0][1],
+        "id": playerData[0][2]
+    })
 
 @app.route('/logout')
 def logout():

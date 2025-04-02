@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roads of Fate - User-Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/user_settings.css') }}">
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>User-Settings</h1>
+        <div class="main">
+            <p>User-ID: {{ playerData.id }}</p>
+            <p>Username: {{ playerData.username }}</p>
+            <p>Password: {{ playerData.password }}</p>
+            <a href="javascript:window.open('','_self').close();">Close</a>
+        </div>
+    </div>
+
+</body>
+
+</html>
