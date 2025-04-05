@@ -175,13 +175,23 @@ def admin():
 @app.route('/user-settings/<username>', methods=['GET'])
 def userSettings(username):
     user = session.get('username')
-    if user is None:
-        return redirect(url_for('open_reg_log'))
-    elif user != 'admin':
-        return redirect(url_for('home'))
-    else:
+    if user is None: #User nicht eingeloggt
+        return render_template('user_settings.html', changeView=False, playerData={
+        "username": "Bombardiro Crocodilo",
+        "password": "Tralalero Tralala",
+        "id": "X69"
+        })
+        #return redirect(url_for('open_reg_log'))
+    elif user == username: #User eingeloggt und schaut eigenes Profil an
         playerData = get_all_player_data(username)
-        return render_template('user_settings.html', playerData={
+        return render_template('user_settings.html', changeView=True, playerData={
+            "username": playerData[0][0],
+            "password": playerData[0][1],
+            "id": playerData[0][2]
+        })
+    else:
+        playerData = get_all_player_data(username) #Admin eingeloggt und schaut fremdes Profil
+        return render_template('user_settings.html', changeView=False, playerData={
         "username": playerData[0][0],
         "password": playerData[0][1],
         "id": playerData[0][2]

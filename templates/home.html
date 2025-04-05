@@ -17,6 +17,9 @@
             <a href="{{ url_for('deck') }}">View current deck</a>
             <a href="{{ url_for('open_carddragger') }}">Card Dragger Test</a>
             <a href="{{ url_for('open_sheet') }}">Character sheet</a>
+            {% if user != 'admin' %}
+                <a id="settings">Settings</a>
+            {% endif %}
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>

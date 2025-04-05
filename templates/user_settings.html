@@ -13,13 +13,22 @@
     <div class="container">
         <h1>User-Settings</h1>
         <div class="main">
-            <p>User-ID: {{ playerData.id }}</p>
-            <p>Username: {{ playerData.username }}</p>
-            <p>Password: {{ playerData.password }}</p>
-            <a href="javascript:window.open('','_self').close();">Close</a>
+            {% if changeView == True %}
+                <p>User-ID: {{ playerData.id }}</p>
+                <p>Username: {{ playerData.username }}</p>
+                <div class="changeData">
+                    <form method="POST" action="{{ url_for('home') }}">
+                        <input type="text" name="password" value={{playerData.password}} placeholder={{playerData.password}} required>
+                    </form>
+                </div>
+            {% else %}
+                <p>User-ID: {{ playerData.id }}</p>
+                <p>Username: {{ playerData.username }}</p>
+                <p>Password: {{ playerData.password }}</p>
+            {% endif %}
+            <a href="javascript:window.open('','_self').close();" onclick="saveData">Close</a>
         </div>
     </div>
 
 </body>
-
 </html>
