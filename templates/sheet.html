@@ -42,42 +42,25 @@
         </div>
       </div>
       <div>
-        <button onclick="openVGR()">Vigor</button>
-        <button onclick="openFNS()">FNS</button>
-        <button onclick="openSPR()">SPR</button>
-        <button onclick="openOP4()">Opt 4</button>
+        <button onclick="changeDisplay('vgr')">Vigor</button>
+        <button onclick="changeDisplay('fns')">FNS</button>
+        <button onclick="changeDisplay('spr')">SPR</button>
+        <button onclick="changeDisplay('mnd')">Mind</button>
       </div>
       <div class="talents">
-        <div id="shown">
-          <h3>Vigor Talents</h3>
-          <div class="talent">
+        <h3>Vigor Talents</h3>
+          <div class="talent vgr fns">
             <span>Climbing (VGR/FNS)</span>
             <button class="arrow down" onclick="adjustScore('climbing', -1)">&#9664;</button>
             <span class="score" id="climbing-score">B</span>
             <button class="arrow up" onclick="adjustScore('climbing', 1)">&#9654;</button>
           </div>
-          <div class="talent">
+          <div class="talent vgr spr">
             <span>Swimming (VGR/SPR)</span>
             <button class="arrow down" onclick="adjustScore('swimming', -1)">&#9664;</button>
             <span class="score" id="swimming-score">A</span>
             <button class="arrow up" onclick="adjustScore('swimming', 1)">&#9654;</button>
           </div>
-        </div>
-        <div id="hidden">
-          <h3>FNS Talents</h3>
-          <div class="talent">
-            <span>Test (VGR/FNS)</span>
-            <button class="arrow down" onclick="adjustScore('climbing', -1)">&#9664;</button>
-            <span class="score" id="climbing-score">B</span>
-            <button class="arrow up" onclick="adjustScore('climbing', 1)">&#9654;</button>
-          </div>
-          <div class="talent">
-            <span>Test (VGR/SPR)</span>
-            <button class="arrow down" onclick="adjustScore('swimming', -1)">&#9664;</button>
-            <span class="score" id="swimming-score">A</span>
-            <button class="arrow up" onclick="adjustScore('swimming', 1)">&#9654;</button>
-          </div>
-        </div>
       </div>
     </div>
   </div>

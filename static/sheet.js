@@ -28,19 +28,61 @@ function adjustScore(attribute, change) {
     }
 }
 
-function openFNS() {
-    const hideShwn = document.getElementById("shown");
-    hideShwn.remove();
+function changeDisplay(type) {
+    console.log("Run");
+    let types = ["vgr", "fns", "spr", "mnd"];
+    types = types.filter(e => e != type);
+    console.log(types);
+    for (let x = 0; x < types.length; x++) {
+        deleteElements(types[x]);
+    }
+    var parentElement = document.getElementsByClassName("talents")[0];
+    var parts = ["Climbing (VGR/FNS)", "vgr fns"];
+    createElements(parts, parentElement);
+
 }
 
-function openVGR() {
+function deleteElements(id) {
+    document.querySelectorAll("." + id).forEach(e => e.remove());
+}
+
+function createElements(parts, parentElement) {
+    var name = parts[0];
+    var classes = parts[1].split(" ");
+    
+    // Build Element
+    var parent = document.createElement("div");
+    parent.classList.add("talent");
+    classes.forEach(e => parent.classList.add(e));
+    
+    var elementName = document.createElement("span");
+    elementName.innerHTML = name;
+
+    var firstButtonList = ["&#9664;", [name.split(" ")[0].toLowerCase(), -1], ["arrow", "down"]];
+    var firstButton = createButtonElement(firstButtonList[0], firstButtonList[1], firstButtonList[2]);
+    
+    var scoreElement = document.createElement("span");
+    scoreElement.classList.add("score");
+    var scoreElementId = name.split(" ")[0].toLowerCase() + "-score";
+    scoreElement.id = scoreElementId;
+    scoreElement.innerHTML = "B";
+
+    var lastButtonList = ["&#9654;", [name.split(" ")[0].toLowerCase(), 1], ["arrow", "up"]];
+    var lastButton = createButtonElement(lastButtonList[0], lastButtonList[1], lastButtonList[2]);
+
+    parent.appendChild(elementName);
+    parent.appendChild(firstButton);
+    parent.appendChild(scoreElement);
+    parent.appendChild(lastButton);
+    parentElement.appendChild(parent);
 
 }
 
-function openOP3() {
+function createButtonElement(name, onClickFunction, classList) {
 
-}
-
-function openOP4() {
-
+    var button = document.createElement("button");
+    classList.forEach(e => button.classList.add(e));
+    button.setAttribute("onclick", `adjustScore('${onClickFunction[0]}', ${onClickFunction[1]})`);
+    button.innerHTML = name;
+    return button;
 }
