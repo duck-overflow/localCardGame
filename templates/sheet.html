@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Roads of Fate - Character Sheet</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='styles/sheet.css') }}">
-  <script src="{{ url_for('static', filename='sheet.js') }}"></script>
+  <script src="{{ url_for('static', filename='sheet.js') }}" defer></script>
 </head>
 
 <body>
@@ -15,6 +15,7 @@
       <div class="header">
         <h1>Character Sheet</h1>
       </div>
+      <p><a href="/" class="back-button">Back to the homepage</a></p>
       <div class="attributes">
         <div class="attribute vigor">
           <span>Vigor</span>
@@ -41,26 +42,14 @@
           <button class="arrow up" onclick="adjustScore('mind', 1)">&#9654;</button>
         </div>
       </div>
-      <div>
-        <button onclick="changeDisplay('vgr')">Vigor</button>
-        <button onclick="changeDisplay('fns')">FNS</button>
-        <button onclick="changeDisplay('spr')">SPR</button>
-        <button onclick="changeDisplay('mnd')">Mind</button>
+      <div class="buttons">
+        <button onclick="buildDisplay('vgr')">Vigor</button>
+        <button onclick="buildDisplay('fns')">FNS</button>
+        <button onclick="buildDisplay('spr')">SPR</button>
+        <button onclick="buildDisplay('mnd')">Mind</button>
       </div>
       <div class="talents">
         <h3>Vigor Talents</h3>
-          <div class="talent vgr fns">
-            <span>Climbing (VGR/FNS)</span>
-            <button class="arrow down" onclick="adjustScore('climbing', -1)">&#9664;</button>
-            <span class="score" id="climbing-score">B</span>
-            <button class="arrow up" onclick="adjustScore('climbing', 1)">&#9654;</button>
-          </div>
-          <div class="talent vgr spr">
-            <span>Swimming (VGR/SPR)</span>
-            <button class="arrow down" onclick="adjustScore('swimming', -1)">&#9664;</button>
-            <span class="score" id="swimming-score">A</span>
-            <button class="arrow up" onclick="adjustScore('swimming', 1)">&#9654;</button>
-          </div>
       </div>
     </div>
   </div>

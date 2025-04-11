@@ -1,3 +1,11 @@
+let current = "";
+
+window.onload = function() {
+
+    buildDisplay("vgr");
+
+}
+
 function adjustScore(attribute, change) {
     const scoreElement = document.getElementById(`${attribute}-score`);
     let currentScore = isNaN(parseInt(scoreElement.innerText))
@@ -28,21 +36,46 @@ function adjustScore(attribute, change) {
     }
 }
 
-function changeDisplay(type) {
-    console.log("Run");
+function buildDisplay(type) {
+    if (current != type) current = type;
+    else return;
+    
     let types = ["vgr", "fns", "spr", "mnd"];
     types = types.filter(e => e != type);
-    console.log(types);
     for (let x = 0; x < types.length; x++) {
-        deleteElements(types[x]);
+        deleteElements(types[x], type);
     }
-    var parentElement = document.getElementsByClassName("talents")[0];
-    var parts = ["Climbing (VGR/FNS)", "vgr fns"];
-    createElements(parts, parentElement);
 
+    var parentElement = document.getElementsByClassName("talents")[0];
+
+    fetch("../static/talents.json")
+    .then(response => response.json())
+    .then(data => {
+        data.Talents.forEach(talent => {
+
+            var name = talent.name;
+            var category = talent.category;
+            if (!category.includes(type)) {
+                return;
+            }
+            var defaultSymbol = talent.default;
+            formatIconName(name, category);
+            var parts = [formatIconName(name, category), category, defaultSymbol];
+            createElements(parts, parentElement);
+
+        });
+    })
+    .catch(error => console.error("Fehler beim Laden der JSON:", error));
 }
 
-function deleteElements(id) {
+function formatIconName(name, category) {
+    var cats = category.split(" ");
+    let partname = "(";
+    cats.forEach(e => partname = partname + e.toUpperCase() + " / ");
+    return (name + " " + partname.substring(0, partname.length - 3) + ")");
+}
+
+function deleteElements(id, type) {
     document.querySelectorAll("." + id).forEach(e => e.remove());
 }
 
@@ -65,7 +98,7 @@ function createElements(parts, parentElement) {
     scoreElement.classList.add("score");
     var scoreElementId = name.split(" ")[0].toLowerCase() + "-score";
     scoreElement.id = scoreElementId;
-    scoreElement.innerHTML = "B";
+    scoreElement.innerHTML = parts[2];
 
     var lastButtonList = ["&#9654;", [name.split(" ")[0].toLowerCase(), 1], ["arrow", "up"]];
     var lastButton = createButtonElement(lastButtonList[0], lastButtonList[1], lastButtonList[2]);

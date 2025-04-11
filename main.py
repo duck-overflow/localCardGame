@@ -1,6 +1,6 @@
-from flask import Flask, request, render_template, redirect, session, url_for, jsonify # type: ignore
-from flask_session import Session # type: ignore
-from flask_socketio import SocketIO # type: ignore
+from flask import Flask, request, render_template, redirect, session, url_for, jsonify
+from flask_session import Session
+from flask_socketio import SocketIO
 from backend.playerData import Player
 from backend.utilFunctions import get_image_list, test_name_availability, check_matching, delete_sessions
 from backend.database import get_everything_player, get_all_player_data, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count, get_player_names

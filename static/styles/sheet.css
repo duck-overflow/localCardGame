@@ -84,3 +84,44 @@ body {
     margin-bottom: 10px;
     color: #ffffff;
 }
+
+button {
+    display: block;
+    text-decoration: none;
+    background: #573b8a;
+    color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+    transition: background 0.3s;
+}
+
+.buttons {
+    padding: 20px;
+    background: #eee;
+    border-radius: 15px;
+    box-shadow: 5px 10px 20px #000;
+    text-align: center;
+    background: #573b8a;
+    display: flex;
+    min-width: 100%;
+}
+
+a {
+    display: block;
+    text-decoration: none;
+    background: #573b8a;
+    color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+    transition: background 0.3s;
+}
+
+.hide {
+    opacity: 0;
+}
+
+div {
+    opacity: 1;
+}
