@@ -96,6 +96,14 @@ button {
     transition: background 0.3s;
 }
 
+/* Active/disabled filter button state */
+.buttons button.active,
+.buttons button:disabled {
+    background: #7d5bd6;
+    cursor: default;
+    opacity: 0.9;
+}
+
 .buttons {
     padding: 20px;
     background: #eee;
@@ -118,10 +126,26 @@ a {
     transition: background 0.3s;
 }
 
-.hide {
-    opacity: 0;
+.talent {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-div {
-    opacity: 1;
+.talent.fade-out {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.talent.fade-in {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeInUp 0.3s ease forwards;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

@@ -1,4 +1,6 @@
 let current = "";
+// Map talent key -> { min, max } where S=-1, A=0, ..., G=6
+const talentRanges = {};
 
 window.onload = function() {
 
@@ -19,8 +21,12 @@ function adjustScore(attribute, change) {
         console.log(currentScore);
         if (currentScore == 17) currentScore = -1;
         if (currentScore == 19) currentScore = 0;
-        if (currentScore < -1) currentScore = -1;
-        if (currentScore > 6) currentScore = 6;
+        // Apply per-talent range limits (defaults to S-G if not found)
+        const range = talentRanges[attribute];
+        const minIdx = range ? range.min : -1; // S
+        const maxIdx = range ? range.max : 6;  // G
+        if (currentScore < minIdx) currentScore = minIdx;
+        if (currentScore > maxIdx) currentScore = maxIdx;
 
         if (currentScore != -1) {
             scoreElement.innerText = String.fromCharCode(currentScore + 65);
@@ -36,15 +42,21 @@ function adjustScore(attribute, change) {
     }
 }
 
-function buildDisplay(type) {
-    if (current != type) current = type;
-    else return;
-    
-    let types = ["vgr", "fns", "spr", "mnd"];
-    types = types.filter(e => e != type);
-    for (let x = 0; x < types.length; x++) {
-        deleteElements(types[x], type);
+async function buildDisplay(type) {
+    if (current !== type) {
+        // remove old first
+        await deleteElements(current);
+        current = type;
+    } else {
+        // toggle off
+        await deleteElements(type);
+        current = "";
+        setActiveButton(null);
+        return;
     }
+
+    // update button UI
+    setActiveButton(type);
 
     var parentElement = document.getElementsByClassName("talents")[0];
 
@@ -59,9 +71,13 @@ function buildDisplay(type) {
                 return;
             }
             var defaultSymbol = talent.default;
+            // Store the allowed letter range for this talent for later adjustments
+            var key = name.split(" ")[0].toLowerCase();
+            talentRanges[key] = parseRange(talent.range);
             formatIconName(name, category);
             var parts = [formatIconName(name, category), category, defaultSymbol];
-            createElements(parts, parentElement);
+            // Pass the active filter type so created elements can be tagged correctly
+            createElements(parts, parentElement, type);
 
         });
     })
@@ -75,17 +91,37 @@ function formatIconName(name, category) {
     return (name + " " + partname.substring(0, partname.length - 3) + ")");
 }
 
-function deleteElements(id, type) {
-    document.querySelectorAll("." + id).forEach(e => e.remove());
+function deleteElements(typeToDelete) {
+    if (!typeToDelete) return Promise.resolve();
+    const elements = document.querySelectorAll(`.talent[data-type="${typeToDelete}"]`);
+    const removals = Array.from(elements).map(e => new Promise(resolve => {
+        e.classList.add("fade-out");
+        const remove = () => { if (e && e.parentNode) e.remove(); resolve(); };
+        e.addEventListener("transitionend", remove, { once: true });
+        // Fallback in case no CSS transition is defined
+        setTimeout(remove, 300);
+    }));
+    return Promise.all(removals);
 }
 
-function createElements(parts, parentElement) {
+function setActiveButton(activeType) {
+    const buttons = document.querySelectorAll('.buttons button');
+    buttons.forEach(btn => {
+        const oc = btn.getAttribute('onclick') || '';
+        const isActive = !!activeType && oc.includes(`'${activeType}'`);
+        btn.disabled = isActive;
+        btn.classList.toggle('active', isActive);
+    });
+}
+
+function createElements(parts, parentElement, activeType) {
     var name = parts[0];
     var classes = parts[1].split(" ");
     
     // Build Element
     var parent = document.createElement("div");
     parent.classList.add("talent");
+    parent.classList.add("fade-in");
     classes.forEach(e => parent.classList.add(e));
     
     var elementName = document.createElement("span");
@@ -107,7 +143,11 @@ function createElements(parts, parentElement) {
     parent.appendChild(firstButton);
     parent.appendChild(scoreElement);
     parent.appendChild(lastButton);
+    // Tag with the currently active filter (e.g., 'vgr', 'fns', 'spr', 'mnd')
+    parent.setAttribute("data-type", activeType);
     parentElement.appendChild(parent);
+
+
 
 }
 
@@ -118,4 +158,14 @@ function createButtonElement(name, onClickFunction, classList) {
     button.setAttribute("onclick", `adjustScore('${onClickFunction[0]}', ${onClickFunction[1]})`);
     button.innerHTML = name;
     return button;
+}
+
+function parseRange(rangeStr) {
+    // Expected formats: "S-G", "S-F", etc.
+    if (!rangeStr || typeof rangeStr !== 'string') return { min: -1, max: 6 };
+    const parts = rangeStr.split('-').map(s => s.trim().toUpperCase());
+    const mapChar = (ch) => ch === 'S' ? -1 : (ch.charCodeAt(0) - 65);
+    const min = parts[0] ? mapChar(parts[0]) : -1;
+    const max = parts[1] ? mapChar(parts[1]) : 6;
+    return { min, max };
 }
