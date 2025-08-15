@@ -1,0 +1,23 @@
+{
+    "Talents":
+    [
+        {
+            "name": "Climbing",
+            "category": "vgr fns",
+            "range": "S-G",
+            "default": "B"
+        } ,
+        {
+            "name": "Power",
+            "category": "vgr vgr",
+            "range": "S-G",
+            "default": "B"
+        } ,
+        {
+            "name": "Running",
+            "category": "vgr spr",
+            "range": "S-F",
+            "default": "C"
+        }
+    ]
+}
