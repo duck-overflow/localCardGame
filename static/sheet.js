@@ -66,17 +66,17 @@ async function buildDisplay(type) {
         data.Talents.forEach(talent => {
 
             var name = talent.name;
-            var category = talent.category;
+            var category = talent.category.split(" ")[0];
+            var doubleCategory = talent.category;
             if (!category.includes(type)) {
                 return;
             }
             var defaultSymbol = talent.default;
-            // Store the allowed letter range for this talent for later adjustments
             var key = name.split(" ")[0].toLowerCase();
             talentRanges[key] = parseRange(talent.range);
-            formatIconName(name, category);
-            var parts = [formatIconName(name, category), category, defaultSymbol];
-            // Pass the active filter type so created elements can be tagged correctly
+            formatIconName(name, doubleCategory);
+            var parts = [formatIconName(name, doubleCategory), category, defaultSymbol];
+            // Pass the active filter type so created elements canx be tagged correctly
             createElements(parts, parentElement, type);
 
         });
@@ -116,7 +116,7 @@ function setActiveButton(activeType) {
 
 function createElements(parts, parentElement, activeType) {
     var name = parts[0];
-    var classes = parts[1].split(" ");
+    var classes = [parts[1]];
     
     // Build Element
     var parent = document.createElement("div");
@@ -168,4 +168,8 @@ function parseRange(rangeStr) {
     const min = parts[0] ? mapChar(parts[0]) : -1;
     const max = parts[1] ? mapChar(parts[1]) : 6;
     return { min, max };
+}
+
+function saveUpdateData(user) {
+    
 }

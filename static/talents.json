@@ -4,20 +4,158 @@
         {
             "name": "Climbing",
             "category": "vgr fns",
-            "range": "S-G",
-            "default": "B"
+            "range": "S-F",
+            "default": "B"   
         } ,
         {
             "name": "Power",
             "category": "vgr vgr",
-            "range": "S-G",
-            "default": "B"
+            "range": "S-F",
+            "default": "C"
         } ,
         {
             "name": "Running",
             "category": "vgr spr",
             "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Swimming",
+            "category": "vgr spr",
+            "range": "S-F",
+            "default": "A"
+        } ,
+        {
+            "name": "Willpower",
+            "category": "vgr spr",
+            "range": "S-F",
             "default": "C"
+        } ,
+        {
+            "name": "Acrobatics",
+            "category": "fns vgr",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Reflex",
+            "category": "fns fns",
+            "range": "S-F",
+            "default": "C"
+        } ,
+        {
+            "name": "Precision",
+            "category": "fns fns",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Stealth",
+            "category": "fns mnd",
+            "range": "S-F",
+            "default": "C"
+        } ,
+        {
+            "name": "Thievery",
+            "category": "fns mnd",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Acting",
+            "category": "spr spr",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Dancing",
+            "category": "spr fns",
+            "range": "S-F",
+            "default": "A"
+        } ,
+        {
+            "name": "Deception",
+            "category": "spr mnd",
+            "range": "S-F",
+            "default": "C"
+        } ,
+        {
+            "name": "Entertaining",
+            "category": "spr spr",
+            "range": "S-F",
+            "default": "A"
+        } ,
+        {
+            "name": "Intimidation",
+            "category": "spr vgr",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Music",
+            "category": "spr mnd",
+            "range": "S-F",
+            "default": "A"
+        } ,
+        {
+            "name": "Persuasion",
+            "category": "spr mnd",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Seduction",
+            "category": "spr vgr",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Crafting",
+            "category": "mnd fns",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Investigation",
+            "category": "mnd mnd",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Insight",
+            "category": "mnd spr",
+            "range": "S-F",
+            "default": "A"
+        } ,
+        {
+            "name": "Knowledge",
+            "category": "mnd mnd",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Nobellife",
+            "category": "mnd spr",
+            "range": "S-F",
+            "default": "B"
+        } ,
+        {
+            "name": "Perception",
+            "category": "mnd mnd",
+            "range": "S-F",
+            "default": "C"
+        } ,
+        {
+            "name": "Survival",
+            "category": "mnd vgr",
+            "range": "S-F",
+            "default": "A"
+        } ,
+        {
+            "name": "Urbanlife",
+            "category": "mnd spr",
+            "range": "S-F",
+            "default": "A"
         }
     ]
 }

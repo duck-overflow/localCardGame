@@ -155,7 +155,7 @@ def open_sheet():
     if user is None:
         return redirect(url_for('open_reg_log'))
     else:
-        return render_template('sheet.html')
+        return render_template('sheet.html', user=user)
 
 @app.route('/admin')
 def admin():
