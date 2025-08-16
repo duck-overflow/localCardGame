@@ -172,6 +172,11 @@ def admin():
             player_list.append(result[x][0])
         return render_template('admin.html', users=loggedUsers, curUsers=len(loggedUsers), maxUsers=get_player_count(), allUsers=player_list)
 
+@app.route('/dice')
+def dice():
+    return render_template('dice.html')
+
+
 @app.route('/user-settings/<username>', methods=['GET'])
 def userSettings(username):
     user = session.get('username')

@@ -5,28 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roads of Fate</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/formPage.css') }}">
+    <script defer src="{{ url_for('static', filename='reglog.js') }}"></script>
 </head>
 <body>
+    <div class="dice-info" id="dice-info-top">
+        <h1>Zum Registrieren/Anmelden den Würfel klicken. Ziel: <strong id="dice-threshold"></strong> oder höher.</h1>
+    </div>
     <div class="main">
         <input type="checkbox" id="chk" aria-hidden="true">
 
-            <div class="signup">
-                <form method="POST" action="{{ url_for('register') }}">
+                        <div class="signup">
+                                <form id="signup-form" method="POST" action="{{ url_for('register') }}">
                     <label for="chk" aria-hidden="true">Sign up</label>
                     <input type="text" name="username" placeholder="User name" required>
                     <input type="password" name="password" placeholder="Password" required>
-                    <button>Sign up!</button>
                 </form>
             </div>
 
             <div class="login">
-                <form method="POST" action="{{ url_for('login') }}">
+                                <form id="login-form" method="POST" action="{{ url_for('login') }}">
                     <label for="chk" aria-hidden="true">Login</label>
                     <input type="text" name="username" placeholder="User name" required>
                     <input type="password" name="password" placeholder="Password" required>
-                    <button>Login</button>
                 </form>
             </div>
     </div>
+        <div class="dice" id="dice-wrap">
+            <iframe id="dice-frame" src="{{ url_for('dice') }}" title="Dice"></iframe>
+            <div class="dice-result" id="dice-result" aria-live="polite" hidden>
+                Geworfen: <strong id="dice-face">-</strong>
+            </div>
+    </div>
+    
 </body>
 </html>

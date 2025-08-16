@@ -1,8 +1,9 @@
 body {
     margin: 0;
-    padding: 0;
+    padding: 20px 0;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
     align-items: center;
     min-height: 100vh;
     font-family: 'Jost', sans-serif;
@@ -18,6 +19,30 @@ body {
     border-radius: 10px;
     box-shadow: 5px 20px 50px #000;
 }
+/* Dice below the form */
+.dice {
+    user-select: none;
+}
+.dice iframe {
+    width: 220px;
+    height: 220px;
+    border: none;
+    overflow: hidden;
+    background: transparent;
+    display: block;
+}
+.dice-info, #dice-info-top {
+    color: #ddd;
+    font-size: 0.95rem;
+    text-align: center;
+}
+.dice-result {
+    color: #fff;
+    text-align: center;
+    margin-top: 8px;
+    font-weight: 600;
+}
+.dice.disabled { opacity: 0.5; cursor: not-allowed; }
 
 #chk {
     display: none;
