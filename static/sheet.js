@@ -169,3 +169,7 @@ function parseRange(rangeStr) {
     const max = parts[1] ? mapChar(parts[1]) : 6;
     return { min, max };
 }
+
+function saveUpdateData(user) {
+    
+}
