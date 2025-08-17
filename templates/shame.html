@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/shame.css') }}">
+    <title>Roads of Fate - Shame</title>
+</head>
+<body>
+    <header>
+        <h1>List of Shame</h1>
+    </header>
+
+    <main>
+
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Playername</th>
+                    <th>Failed Checks</th>
+                    <th>Natural 1</th>
+                    <th>Natural 20</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in listOfShame %}
+                <tr>
+                    <td>{{ row.player }}</td>
+                    <td>{{ row.failed_checks }}</td>
+                    <td>{{ row.nat_one }}</td>
+                    <td>{{ row.nat_twenty }}</td>
+                    <td>{{ row.total }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">No activities found!</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div>
+            <a href="{{ url_for('home') }}">Go Back</a>
+        </div>
+    </main>
+
+</body>
+</html>

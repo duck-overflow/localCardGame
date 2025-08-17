@@ -3,7 +3,9 @@ from flask_session import Session
 from flask_socketio import SocketIO
 from backend.playerData import Player
 from backend.utilFunctions import get_image_list, test_name_availability, check_matching, delete_sessions
-from backend.database import get_everything_player, get_all_player_data, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count, get_player_names
+from backend.utilFunctions import update_player_talents, prepare_talent_data
+from backend.utilFunctions import prepare_list_of_shame
+from backend.database import get_everything_player, get_all_player_data, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count, get_player_names, check_player_dice_check
 
 app = Flask(__name__, static_folder='static')
 
@@ -28,6 +30,7 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        roll = request.form['roll_dice']
 
         if test_name_availability(username):
             return redirect(url_for('open_reg_log'))
@@ -45,6 +48,7 @@ def register():
 
         session['username'] = username
         loggedUsers.append(username)
+        check_player_dice_check(username, roll)
         socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
         socketio.emit('update_user_list', {'users': player_list})
         return redirect(url_for('home'))
@@ -57,10 +61,13 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        roll = request.form['dice_roll']
 
         if check_matching(username, password):
             session['username'] = username
             loggedUsers.append(username)
+
+            check_player_dice_check(username, roll)
 
             socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
 
@@ -155,7 +162,7 @@ def open_sheet():
     if user is None:
         return redirect(url_for('open_reg_log'))
     else:
-        return render_template('sheet.html', user=user)
+        return render_template('sheet.html', user=user, talentData=prepare_talent_data(user))
 
 @app.route('/admin')
 def admin():
@@ -172,10 +179,18 @@ def admin():
             player_list.append(result[x][0])
         return render_template('admin.html', users=loggedUsers, curUsers=len(loggedUsers), maxUsers=get_player_count(), allUsers=player_list)
 
+@app.route('/shame')
+def shame():
+    user = session.get('username')
+
+    if user is None:
+        return redirect(url_for('open_reg_log'))
+    else:
+        return render_template('shame.html', listOfShame=prepare_list_of_shame())
+
 @app.route('/dice')
 def dice():
     return render_template('dice.html')
-
 
 @app.route('/user-settings/<username>', methods=['GET'])
 def userSettings(username):

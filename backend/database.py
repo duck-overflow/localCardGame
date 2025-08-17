@@ -6,16 +6,22 @@ from backend.playerData import Player
 
 con = sqlite3.connect("database.db", check_same_thread=False)
 cur = con.cursor()
-cur.execute("CREATE TABLE IF NOT EXISTS player(username, password, id)")
-cur.execute("CREATE TABLE IF NOT EXISTS deck(id, card, max, amount)")
+cur.execute('CREATE TABLE IF NOT EXISTS player(username, password, id)')
+cur.execute('CREATE TABLE IF NOT EXISTS deck(id, card, max, amount)')
+cur.execute('CREATE TABLE IF NOT EXISTS rolls(id, failedCheck, natOne, natTwenty, total)')
+cur.execute('CREATE TABLE IF NOT EXISTS talent_stats(id, talentName, talentLevel)')
 
 # Management Functions
 
 def reset_data():
     cur.execute('DROP TABLE player')
     cur.execute('DROP TABLE deck')
-    cur.execute("CREATE TABLE IF NOT EXISTS player(username, password, id)")
-    cur.execute("CREATE TABLE IF NOT EXISTS deck(id, card, max, amount)")
+    cur.execute('DROP TABLE rolls')
+    cur.execute('DROP TABLE talent_stats')
+    cur.execute('CREATE TABLE IF NOT EXISTS player(username, password, id)')
+    cur.execute('CREATE TABLE IF NOT EXISTS deck(id, card, max, amount)')
+    cur.execute('CREATE TABLE IF NOT EXISTS rolls(id, failedCheck, natOne, natTwenty, total)')
+    cur.execute('CREATE TABLE IF NOT EXISTS talent_stats(id, talentName, talentLevel)')
     print("Databases restored succesfuly")
     create_admin_user()
 
@@ -62,6 +68,16 @@ def transform_username_id(username):
         return result[0]
     raise ValueError(f'User {username} not found.')
 
+def transform_id_username(id):
+    with con:
+        cur_new = con.cursor()
+        cmd = 'SELECT username FROM player WHERE id LIKE ?'
+        res = cur_new.execute(cmd, (id,))
+        result = res.fetchall()
+    if result:
+        return result[0]
+    raise ValueError(f'ID {id} not found.')
+
 def verify_player_data(username, password):
     cmd = 'SELECT * FROM player WHERE username LIKE ? AND password LIKE ?'
     print(cmd)
@@ -72,6 +88,8 @@ def add_player_data(username, password, player_id):
     cmd = 'INSERT INTO player VALUES(?, ?, ?)'
     print(cmd)
     cur.execute(cmd, (username, password, player_id))
+    cmd = 'INSERT INTO rolls VALUES(?, 0, 0, 0, 0)'
+    cur.execute(cmd, (player_id,))
     con.commit()
 
 def delete_player_data(player):
@@ -163,6 +181,53 @@ def get_card_count(player):
     rows = cur.fetchall()
     con.commit()
     return rows
+
+# Dice Mechanic
+
+def check_player_dice_check(player, roll):
+    player_id = transform_username_id(player)
+    roll = int(roll)
+    if roll < 11 and roll == 1:
+        cmd = f'UPDATE rolls SET failedCheck = failedCheck + 1, natOne = natOne + 1 WHERE id = ?'
+        cur.execute(cmd, (player_id,))
+    if roll < 11 and roll != 1:
+        cmd = f'UPDATE rolls SET failedCheck = failedCheck + 1 WHERE id = ?'
+        cur.execute(cmd, (player_id,))
+    if roll > 10 and roll == 20:
+        cmd = f'UPDATE rolls SET natTwenty = natTwenty + 1 WHERE id = ?'
+        cur.execute(cmd, (player_id,))
+    cmd = f'UPDATE rolls SET total = total + 1 WHERE id = ?'
+    cur.execute(cmd, (player_id,))
+    con.commit()
+
+def get_all_dice_roles():
+    cmd = f'SELECT * FROM rolls'
+    res = cur.execute(cmd)
+    return res.fetchall()
+
+# Talent Stats Grading Cat
+
+def check_talent_existing(player, talent_name):
+    player_id = transform_username_id(player)
+    cmd = f'SELECT talentLevel FROM talent_stats WHERE ID = ? AND talentName = ?'
+    res = cur.execute(cmd, (player_id, talent_name))
+    return res.fetchone()
+
+def update_talent(player, talent_name, talent_level):
+    player_id = transform_username_id(player)
+    cmd = f'UPDATE talent_stats SET talentLevel = ? WHERE ID = ? AND talentName = ?'
+    cur.execute(cmd, (talent_level, player_id, talent_name))
+
+def add_talent_level(player, talent_name, talent_level):
+    player_id = transform_username_id(player)
+    cmd = f'INSERT INTO talent_stats VALUES(?, ?, ?)'
+    cur.execute(cmd, (player_id, talent_name, talent_level))
+
+def load_player_talent_data(player):
+    player_id = transform_username_id(player)
+    cmd = f'SELECT talentName, talentLevel FROM talent_stats WHERE id = ?'
+    res = cur.execute(cmd, (player_id,))
+    return res.fetchall()
 
 #everything_player = get_everything_player()
 #everything_card = get_everything_card()

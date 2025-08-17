@@ -13,11 +13,10 @@
             {% if user == 'admin' %}
                 <a href="{{ url_for('admin') }}">Admin Panel</a>
             {% endif %}
-            <a href="{{ url_for('cards') }}">Choose cards</a>
-            <a href="{{ url_for('deck') }}">View current deck</a>
+            <a href="{{ url_for('deck') }}">View your deck</a>
             <a href="{{ url_for('open_carddragger') }}">Card Dragger Test</a>
             <a href="{{ url_for('open_sheet') }}">Character sheet</a>
-            <a href="{{ url_for('dice') }}">Dice</a>
+            <a href="{{ url_for('shame') }}">Hall of Shame</a>
             <a id="settings">Settings</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
