@@ -4,3 +4,4 @@ flask_session/
 lib/
 static/assetsFolder/
 test.py
+database.db
