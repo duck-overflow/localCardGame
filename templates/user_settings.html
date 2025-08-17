@@ -5,7 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roads of Fate - User-Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/theme.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/user_settings.css') }}">
+    <script defer src="{{ url_for('static', filename='theme.js') }}"></script>
 </head>
 
 <body>
@@ -32,6 +34,15 @@
                 <p>Username: {{ playerData.username }}</p>
                 <p>Password: {{ playerData.password }}</p>
             {% endif %}
+            <hr>
+            <div class="theme-settings" style="margin-top:12px;">
+                <label for="theme-select" style="margin-right:8px;">Theme:</label>
+                <select id="theme-select">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="retro">Retro</option>
+                </select>
+            </div>
                         <a href="#" id="close-link">Close</a>
         </div>
     </div>
@@ -62,6 +73,18 @@
                         window.location.href = "{{ url_for('home') }}";
                     }
                 });
+                                // Theme selector wiring
+                                const select = document.getElementById('theme-select');
+                                if (select) {
+                                    const stored = localStorage.getItem('theme') || 'dark';
+                                    select.value = stored;
+                                    select.addEventListener('change', function(){
+                                        const val = select.value;
+                                        localStorage.setItem('theme', val);
+                                        // Apply immediately on this page too
+                                        window.dispatchEvent(new CustomEvent('theme:apply', { detail: { value: val } }));
+                                    });
+                                }
             })();
         </script>
     </body>

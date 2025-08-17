@@ -10,6 +10,7 @@ cur.execute('CREATE TABLE IF NOT EXISTS player(username, password, id)')
 cur.execute('CREATE TABLE IF NOT EXISTS deck(id, card, max, amount)')
 cur.execute('CREATE TABLE IF NOT EXISTS rolls(id, failedCheck, natOne, natTwenty, total)')
 cur.execute('CREATE TABLE IF NOT EXISTS talent_stats(id, talentName, talentLevel)')
+cur.execute('CREATE TABLE IF NOT EXISTS theme(id, theme_name)')
 
 # Management Functions
 
@@ -22,6 +23,7 @@ def reset_data():
     cur.execute('CREATE TABLE IF NOT EXISTS deck(id, card, max, amount)')
     cur.execute('CREATE TABLE IF NOT EXISTS rolls(id, failedCheck, natOne, natTwenty, total)')
     cur.execute('CREATE TABLE IF NOT EXISTS talent_stats(id, talentName, talentLevel)')
+    cur.execute('CREATE TABLE IF NOT EXISTS theme(id, theme_name)')
     print("Databases restored succesfuly")
     create_admin_user()
 
@@ -89,6 +91,8 @@ def add_player_data(username, password, player_id):
     print(cmd)
     cur.execute(cmd, (username, password, player_id))
     cmd = 'INSERT INTO rolls VALUES(?, 0, 0, 0, 0)'
+    cur.execute(cmd, (player_id,))
+    cmd = 'INSERT INTO theme VALUES(?, default)'
     cur.execute(cmd, (player_id,))
     con.commit()
 
@@ -242,6 +246,19 @@ def load_player_talent_data(player):
     cmd = f'SELECT talentName, talentLevel FROM talent_stats WHERE id = ?'
     res = cur.execute(cmd, (player_id,))
     return res.fetchall()
+
+# Color Theme
+
+def save_used_theme(player, theme):
+    player_id = transform_username_id(player)
+    cmd = f'UPDATE theme SET theme_name = ? WHERE id = ?'
+    cur.execute(cmd, (theme, player_id))
+    con.commit()
+
+def load_used_theme(player, theme):
+    player_id = transform_username_id(player)
+    cmd = f'SELECT theme_name FROM theme WHERE id = ?'
+    cur.execute(cmd, (player_id,))
 
 #everything_player = get_everything_player()
 #everything_card = get_everything_card()
