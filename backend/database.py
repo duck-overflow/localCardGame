@@ -98,6 +98,20 @@ def delete_player_data(player):
     cur.execute(cmd, (player_id,))
     con.commit()
 
+def update_user_name(player, new_name):
+    player_id = transform_username_id(player)
+    cmd = f'UPDATE player SET username = ? WHERE ID = ?'
+    print(cmd)
+    cur.execute(cmd, (new_name, player_id))
+    con.commit()
+
+def update_user_password(player, new_password):
+    player_id = transform_username_id(player)
+    cmd = f'UPDATE player SET password = ? WHERE ID = ?'
+    print(cmd)
+    cur.execute(cmd, (new_password, player_id))
+    con.commit()
+
 def get_last_id():
     cmd = f'SELECT id FROM player ORDER BY id DESC'
     res = cur.execute(cmd)

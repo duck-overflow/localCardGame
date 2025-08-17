@@ -2,10 +2,14 @@ from flask import Flask, request, render_template, redirect, session, url_for, j
 from flask_session import Session
 from flask_socketio import SocketIO
 from backend.playerData import Player
+
 from backend.utilFunctions import get_image_list, test_name_availability, check_matching, delete_sessions
 from backend.utilFunctions import update_player_talents, prepare_talent_data
 from backend.utilFunctions import prepare_list_of_shame
+
 from backend.database import get_everything_player, get_all_player_data, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count, get_player_names, check_player_dice_check
+from backend.database import transform_username_id
+from backend.database import update_user_name, update_user_password
 
 app = Flask(__name__, static_folder='static')
 
@@ -30,7 +34,8 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        roll = request.form['roll_dice']
+        # Dice roll comes from hidden field set by the dice widget; may be missing
+        roll = request.form.get('dice_roll', '')
 
         if test_name_availability(username):
             return redirect(url_for('open_reg_log'))
@@ -48,7 +53,8 @@ def register():
 
         session['username'] = username
         loggedUsers.append(username)
-        check_player_dice_check(username, roll)
+        if isinstance(roll, str) and roll.isdigit():
+            check_player_dice_check(username, roll)
         socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
         socketio.emit('update_user_list', {'users': player_list})
         return redirect(url_for('home'))
@@ -61,19 +67,55 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        roll = request.form['dice_roll']
+        roll = request.form.get('dice_roll', '')
 
         if check_matching(username, password):
             session['username'] = username
             loggedUsers.append(username)
 
-            check_player_dice_check(username, roll)
+            if isinstance(roll, str) and roll.isdigit():
+                check_player_dice_check(username, roll)
 
             socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
 
             return redirect(url_for('home'))
 
     return redirect(url_for('open_reg_log'))
+
+@app.route('/update_password', methods=['POST'])
+def update_password():
+    if request.method == 'POST':
+        username = request.form['old_username']
+        password = request.form['old_password']
+        new_username = request.form['username']
+        new_password = request.form['password']
+        
+        target_username = username
+        username_changed = False
+        if username != new_username:
+            # Only update if the new name is available (i.e., not already taken)
+            if not test_name_availability(new_username):
+                update_user_name(username, new_username)
+                target_username = new_username
+                username_changed = True
+        if password != new_password:
+            update_user_password(username, new_password)
+
+        # Keep the user logged in if they changed their own username
+        if username_changed and session.get('username') == username:
+            session['username'] = new_username
+            # Update loggedUsers list
+            try:
+                idx = loggedUsers.index(username)
+                loggedUsers[idx] = new_username
+            except ValueError:
+                pass
+            # Optionally refresh admin/user lists
+            result = get_player_names()
+            player_list = [row[0] for row in result]
+            socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
+            socketio.emit('update_user_list', {'users': player_list})
+    return userSettings(target_username)
 
 @app.route('/dashboard')
 def dashboard():
@@ -84,10 +126,11 @@ def dashboard():
 @app.route('/')
 def home():
     user = session.get('username')
+    player_id = transform_username_id(user)
     if user is None:
         return redirect(url_for('open_reg_log'))
     else:
-        return render_template('home.html', user=user)
+        return render_template('home.html', user=user, id=player_id)
 
 @app.route('/cards')
 def cards():
@@ -167,10 +210,10 @@ def open_sheet():
 @app.route('/admin')
 def admin():
     user = session.get('username')
-
     if user is None:
         return redirect(url_for('open_reg_log'))
-    elif user != 'admin':
+    player_id = transform_username_id(user)
+    if player_id != 0:
         return redirect(url_for('home'))
     else:
         result = get_player_names()

@@ -10,14 +10,14 @@
     <div class="container">
         <h1>Welcome {% if user %}{{ user }}{% else %}Gast{% endif %}!</h1>
         <div class="main">
-            {% if user == 'admin' %}
+            {% if id == 0 %}
                 <a href="{{ url_for('admin') }}">Admin Panel</a>
             {% endif %}
             <a href="{{ url_for('deck') }}">View your deck</a>
             <a href="{{ url_for('open_carddragger') }}">Card Dragger Test</a>
             <a href="{{ url_for('open_sheet') }}">Character sheet</a>
             <a href="{{ url_for('shame') }}">Hall of Shame</a>
-            <a id="settings">Settings</a>
+            <a href="{{ url_for('userSettings', username=user) }}">Settings</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>

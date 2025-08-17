@@ -17,8 +17,14 @@
                 <p>User-ID: {{ playerData.id }}</p>
                 <p>Username: {{ playerData.username }}</p>
                 <div class="changeData">
-                    <form method="POST" action="{{ url_for('home') }}">
+                    <form method="POST" action="{{ url_for('update_password') }}">
+                        <input type="text" name="old_username" value={{playerData.username}} hidden>
+                        <input type="text" name="old_password" value={{playerData.password}} hidden>
+                        <input type="text" name="username" value={{playerData.username}} placeholder={{playerData.username}} required>
+                        <br>
                         <input type="text" name="password" value={{playerData.password}} placeholder={{playerData.password}} required>
+                        <br>
+                        <button>Save data!</button>
                     </form>
                 </div>
             {% else %}
@@ -26,9 +32,37 @@
                 <p>Username: {{ playerData.username }}</p>
                 <p>Password: {{ playerData.password }}</p>
             {% endif %}
-            <a href="javascript:window.open('','_self').close();" onclick="saveData">Close</a>
+                        <a href="#" id="close-link">Close</a>
         </div>
     </div>
 
-</body>
+        <script>
+            (function(){
+                const closeLink = document.getElementById('close-link');
+                if (!closeLink) return;
+                closeLink.addEventListener('click', function(e){
+                    e.preventDefault();
+                    const ref = document.referrer || '';
+                    const cameFromAdmin = ref.indexOf('/admin') !== -1;
+                    // If opened by script (has opener) and came from admin, try to close the window
+                    if (cameFromAdmin && (window.opener || window.name)) {
+                        try { window.close(); } catch(_) {}
+                        try { window.open('', '_self').close(); } catch(_) {}
+                        return;
+                    }
+                    // If we just came from update flow or another user_settings, skip the extra step and go home
+                    if (ref.indexOf('/update_password') !== -1 || ref.indexOf('/user-settings') !== -1) {
+                        window.location.href = "{{ url_for('home') }}";
+                        return;
+                    }
+                    // Otherwise, go back if possible, else to home
+                    if (window.history.length > 1) {
+                        window.history.back();
+                    } else {
+                        window.location.href = "{{ url_for('home') }}";
+                    }
+                });
+            })();
+        </script>
+    </body>
 </html>
