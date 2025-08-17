@@ -126,10 +126,10 @@ def dashboard():
 @app.route('/')
 def home():
     user = session.get('username')
-    player_id = transform_username_id(user)
     if user is None:
         return redirect(url_for('open_reg_log'))
     else:
+        player_id = transform_username_id(user)
         return render_template('home.html', user=user, id=player_id)
 
 @app.route('/cards')
