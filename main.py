@@ -263,9 +263,11 @@ def userSettings(username):
 @app.route('/logout')
 def logout():
     # Löscht den Benutzernamen aus der Session und loggt den Benutzer aus
-    loggedUsers.remove(session['username'])
-    socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
-    session.pop('username', None)
+    user = session.get('username')
+    if user != None:
+        loggedUsers.remove(session['username'])
+        socketio.emit('update_admin_panel', {'users': loggedUsers, 'max_users': get_player_count()})
+        session.pop('username', None)
     return redirect(url_for('open_reg_log'))
 
 
