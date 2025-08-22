@@ -8,10 +8,103 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/draggable.css') }}">
     <script defer src="{{ url_for('static', filename='theme.js') }}"></script>
     <script src="{{ url_for('static', filename='pleaserotate.js') }}" defer></script>
+    <style>
+        :root {
+            --hand-h: clamp(160px, 28vh, 240px);
+            --board-max-h: 720px; /* Background nicht zu groß werden lassen */
+        }
+        html, body { height: 100%; margin: 0; }
+        body {
+            height: 100vh; /* fix volle Höhe */
+            overflow: hidden; /* kein Bereich unter der Hand */
+            background: var(--bg, #0e0e10);
+            color: var(--fg, #e6e6e6);
+        }
+        /* Oberer Spielbereich (Board) */
+        #container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - var(--hand-h));
+            overflow: hidden;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: grid;
+            place-items: center;
+            background: transparent;
+        }
+        /* Das Board-Bild skaliert dynamisch und bleibt zentriert */
+        #board-image {
+            width: 100%;
+            height: 100%;
+            max-height: var(--board-max-h); /* Board wird nicht zu groß */
+            object-fit: contain; /* wie background-size: contain */
+            pointer-events: none; /* Bild blockiert keine Pointer */
+            user-select: none;
+        }
+        /* Ziehbare Karte */
+        #draggable {
+            position: absolute; /* über dem Board bewegbar */
+            top: 0; left: 0;
+            width: min(18vw, 220px);
+            max-width: 45%;
+            user-select: none;
+            -webkit-user-drag: none;
+            touch-action: none; /* verhindert Scrollen beim Draggen auf Mobilgeräten */
+            cursor: grab;
+            z-index: 2;
+        }
+        /* Unterer Bereich für Handkarten — fix am unteren Rand */
+        #hand {
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            height: var(--hand-h);
+            width: 100%;
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(2px);
+            display: flex;
+            flex-direction: column;
+            z-index: 3; /* über dem Board */
+        }
+        #hand .strip {
+            display: flex;
+            gap: 12px;
+            padding: 10px 14px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: thin;
+        }
+        #hand .card {
+            flex: 0 0 auto;
+            height: calc(var(--hand-h) - 28px);
+            max-height: 220px;
+            border-radius: 10px;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        #hand .title {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            padding: 6px 12px 0;
+        }
+    </style>
 </head>
 <body>
-    <div id="container" style="position: relative; width: 100%; height: 500px; border: 1px solid black;">
-        <img id="draggable" src="{{ url_for('static', filename='assetsFolder/Cards/Default_01.jpg') }}">
+    <div id="container">
+        <img id="board-image" src="{{ url_for('static', filename='assetsFolder/Battlemap.png') }}" alt="Board">
+        <img id="draggable" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Mass Confusion_4_6.png') }}" alt="Draggable Card">
+    </div>
+    <!-- Handkarten-Bereich unter dem Hintergrund -->
+    <div id="hand">
+        <div class="title">Handkarten</div>
+        <div class="strip">
+            <!-- Beispielkarten; können später dynamisch befüllt werden -->
+            <img class="card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Spark_5_5.png') }}" alt="Card Spark">
+            <img class="card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Pyre_5_5.png') }}" alt="Card Pyre">
+            <img class="card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Sling_5_6.png') }}" alt="Card Sling">
+            <img class="card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Searching Sparks_3_X.png') }}" alt="Card Searching Sparks">
+            <img class="card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Psychioblast_2_5.png') }}" alt="Card Psychioblast">
+            <img class="card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Magic Arsenal_4_X.png') }}" alt="Card Magic Arsenal">
+        </div>
     </div>
     <script src="{{ url_for('static', filename='dragger.js') }}"></script>
 </body>
