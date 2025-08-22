@@ -1,22 +1,23 @@
-// Pointer Events basiertes Dragging mit Snap-Punkten und mobilem Scroll-Schutz
 const draggable = document.getElementById('draggable');
 const container = document.getElementById('container');
 const boardImage = document.getElementById('board-image');
 
 if (!draggable || !container) {
-    // nothing to do
 } else {
-    // Disable native image dragging and text selection behaviors
     draggable.setAttribute('draggable', 'false');
     draggable.addEventListener('dragstart', (e) => e.preventDefault());
 
-    // Use transform translate for smoother performance
     draggable.style.willChange = 'transform';
+    draggable.style.transition = 'transform 90ms ease-out';
 
     let isDragging = false;
     let pointerId = null;
-    let startX = 0, startY = 0; // pointer start
-    let baseX = 0, baseY = 0;   // element base translate at drag start
+    let startX = 0, startY = 0;
+    let baseX = 0, baseY = 0;
+    let isZoomOpen = false;
+    let lastTapTime = 0;
+    const TAP_DT = 300;
+    const TAP_MOVE = 8;
 
     function getTranslate(el) {
         const st = window.getComputedStyle(el);
@@ -45,11 +46,25 @@ if (!draggable || !container) {
     }
 
     function getSnapTargets() {
-        // Optional: elements with class 'snap-point' inside container
+        // Elements with class 'snap-point' inside container (e.g. slots)
+        // We convert them into TARGET TOP-LEFT positions that would center
+        // the card over the snap element by default. This avoids a visual
+        // offset when snapping into frames.
         const rectC = container.getBoundingClientRect();
+        const cardRect = draggable.getBoundingClientRect();
+        const cardW = cardRect.width;
+        const cardH = cardRect.height;
         const points = Array.from(container.querySelectorAll('.snap-point')).map((el) => {
             const r = el.getBoundingClientRect();
-            return { x: r.left - rectC.left, y: r.top - rectC.top };
+            const align = el.dataset.snapAlign || 'center'; // 'center' | 'topleft'
+            if (align === 'topleft') {
+                // align card's top-left to element's top-left
+                return { x: r.left - rectC.left, y: r.top - rectC.top, cx: r.left - rectC.left + r.width/2, cy: r.top - rectC.top + r.height/2 };
+            }
+            // Default: place card centered inside the snap element
+            const tx = (r.left - rectC.left) + (r.width - cardW) / 2;
+            const ty = (r.top - rectC.top) + (r.height - cardH) / 2;
+            return { x: tx, y: ty, cx: tx + cardW/2, cy: ty + cardH/2 };
         });
         return points;
     }
@@ -57,26 +72,38 @@ if (!draggable || !container) {
     function snapTo(x, y) {
         const points = getSnapTargets();
         if (points.length > 0) {
-            // Snap to nearest point (align top-left of card to point)
+            // Choose the snap whose CENTER is closest to the card center
+            const cardW = draggable.getBoundingClientRect().width;
+            const cardH = draggable.getBoundingClientRect().height;
+            const cardCX = x + cardW / 2;
+            const cardCY = y + cardH / 2;
             let best = null, bestD = Infinity;
             for (const p of points) {
-                const dx = p.x - x;
-                const dy = p.y - y;
+                // Ensure cx/cy exist even for topleft alignment
+                const cx = p.cx ?? (p.x + cardW/2);
+                const cy = p.cy ?? (p.y + cardH/2);
+                const dx = cx - cardCX;
+                const dy = cy - cardCY;
                 const d2 = dx*dx + dy*dy;
                 if (d2 < bestD) { bestD = d2; best = p; }
             }
-            // Optional radius threshold can be applied here
             return { x: best.x, y: best.y };
         }
-        // Fallback: grid snapping (e.g., 40px grid)
-        const grid = 40;
+        // Fallback: dynamic grid snapping basierend auf Boardgröße
+        // Anchor grid to the board's visible area so snapping doesn't drift
+        const contRect = container.getBoundingClientRect();
+        const boardRect = boardImage ? boardImage.getBoundingClientRect() : contRect;
+        const originX = Math.max(0, boardRect.left - contRect.left);
+        const originY = Math.max(0, boardRect.top - contRect.top);
+        const grid = Math.max(24, Math.min(64, Math.floor(boardRect.width / 24)));
         return {
-            x: Math.round(x / grid) * grid,
-            y: Math.round(y / grid) * grid,
+            x: Math.round((x - originX) / grid) * grid + originX,
+            y: Math.round((y - originY) / grid) * grid + originY,
         };
     }
 
     function onPointerDown(e) {
+    if (isZoomOpen) return; // ignore drags while zoom is open
         if (pointerId !== null) return; // ignore multi-pointer
         pointerId = e.pointerId;
         draggable.setPointerCapture(pointerId);
@@ -128,6 +155,20 @@ if (!draggable || !container) {
         // Persist new base
         const finalT = getTranslate(draggable);
         baseX = finalT.x; baseY = finalT.y;
+
+        // Double-tap to zoom (use small move threshold to avoid triggering after drags)
+        const moved = Math.hypot(e.clientX - startX, e.clientY - startY);
+        const now = Date.now();
+        if (moved < TAP_MOVE) {
+            if (now - lastTapTime < TAP_DT) {
+                openZoom();
+                lastTapTime = 0; // reset
+            } else {
+                lastTapTime = now;
+            }
+        } else {
+            lastTapTime = 0;
+        }
     }
 
     function clampIntoBounds() {
@@ -149,4 +190,108 @@ if (!draggable || !container) {
     });
     // initial sicherstellen, dass die Karte im Board liegt
     requestAnimationFrame(clampIntoBounds);
+
+    // Back button
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            // Standard: eine Seite zurück, falls im Browserkontext; andernfalls auf Startseite
+            if (window.history.length > 1) window.history.back();
+            else window.location.href = '/';
+        });
+    }
+
+    // ---------- Zoom Overlay (dblclick / double-tap) ----------
+    function ensureZoomOverlay() {
+        let overlay = document.getElementById('zoom-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'zoom-overlay';
+            overlay.style.cssText = [
+                'position:fixed',
+                'inset:0',
+                'background:rgba(0,0,0,0.75)',
+                'display:none',
+                'align-items:center',
+                'justify-content:center',
+                'z-index:9999',
+                'padding:4vh 3vw'
+            ].join(';');
+            const img = document.createElement('img');
+            img.id = 'zoom-image';
+            img.alt = 'Card zoom';
+            img.style.cssText = [
+                'max-width:92vw',
+                'max-height:92vh',
+                'height:92vh',
+                'width:auto',
+                'object-fit:contain',
+                'border-radius:12px',
+                'box-shadow:0 12px 40px rgba(0,0,0,0.55)'
+            ].join(';');
+            overlay.appendChild(img);
+            document.body.appendChild(overlay);
+            // Close interactions
+            overlay.addEventListener('click', closeZoom);
+            window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeZoom(); });
+        }
+        return overlay;
+    }
+
+    function openZoom(src) {
+        const overlay = ensureZoomOverlay();
+        const img = overlay.querySelector('#zoom-image');
+        const finalSrc = src || (draggable ? draggable.src : '');
+        if (img && finalSrc) img.src = finalSrc;
+        overlay.style.display = 'flex';
+        isZoomOpen = true;
+    }
+
+    function closeZoom() {
+        const overlay = ensureZoomOverlay();
+        overlay.style.display = 'none';
+        isZoomOpen = false;
+    }
+
+    // Mouse dblclick support (board card)
+    draggable.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        openZoom(draggable.src);
+    });
+
+    // Handkarten: dblclick / double-tap Zoom
+    function setupHandCardZoom() {
+        const cards = Array.from(document.querySelectorAll('#hand .card'));
+        const lastTapMap = new WeakMap();
+        const downPos = new WeakMap();
+        cards.forEach((el) => {
+            // dblclick (mouse)
+            el.addEventListener('dblclick', (ev) => {
+                ev.preventDefault();
+                openZoom(el.src);
+            });
+            // track down for move distance
+            el.addEventListener('pointerdown', (ev) => {
+                downPos.set(el, { x: ev.clientX, y: ev.clientY });
+            }, { passive: true });
+            el.addEventListener('pointerup', (ev) => {
+                const now = Date.now();
+                const last = lastTapMap.get(el) || 0;
+                const d = downPos.get(el) || { x: ev.clientX, y: ev.clientY };
+                const moved = Math.hypot(ev.clientX - d.x, ev.clientY - d.y);
+                if (moved < TAP_MOVE) {
+                    if (now - last < TAP_DT) {
+                        openZoom(el.src);
+                        lastTapMap.set(el, 0);
+                    } else {
+                        lastTapMap.set(el, now);
+                    }
+                } else {
+                    lastTapMap.set(el, 0);
+                }
+            });
+        });
+    }
+
+    setupHandCardZoom();
 }

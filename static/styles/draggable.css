@@ -6,27 +6,8 @@
     color: #fff;
     background-color: #000;
 }
-/* Use full viewport and cover the background image; this maximizes usage without letterboxing */
-html, body {
-    height: 100%;
-    margin: 0;
-    background: #000; /* fallback behind container */
-}
-
-#container {
-    position: relative;
-    width: 100vw;
-    height: 100dvh; /* use dynamic viewport height to avoid mobile UI issues */
-    margin: 0 auto;
-    border: none;
-    overflow: hidden;
-    touch-action: none; /* disable browser gestures inside container */
-    background-image: url("../assetsFolder/Battlemap.png");
-    background-repeat: no-repeat;
-    background-position: center center;
-    background-size: cover; /* fill completely, cropping if necessary */
-    background-color: #000; /* no visible letterbox */
-}
+/* Page-level layout is defined inline in card_dragger.html.
+   Keep only generic, non-layout styles here to avoid conflicts across devices. */
 
 #draggable {
     position: absolute;
