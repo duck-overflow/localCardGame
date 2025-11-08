@@ -356,6 +356,14 @@ if (!draggable || !container) {
         }
     });
 
+    window.addEventListener('beforeunload', () => {
+        try {
+            persistState({ keepalive: true });
+        } catch (error) {
+            console.warn('Unable to persist state on unload', error);
+        }
+    });
+
     // Back button
     const backBtn = document.getElementById('back-btn');
     if (backBtn) {
