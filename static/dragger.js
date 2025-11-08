@@ -15,16 +15,6 @@ if (!draggable || !container) {
     draggable.style.transition = 'transform 90ms ease-out';
     ensureCardId(draggable);
 
-    const initStateLoad = () => {
-        updateBoardScaleVar();
-        loadPersistedState();
-    };
-    if (boardImage && !boardImage.complete) {
-        boardImage.addEventListener('load', initStateLoad, { once: true });
-    } else {
-        initStateLoad();
-    }
-
     let isZoomOpen = false;
     const TAP_DT = 300;
     const TAP_MOVE = 8;
@@ -39,6 +29,26 @@ if (!draggable || !container) {
     let latestState = null;
     let persistTimer = null;
     let zCounter = 10;
+    const initialLayout = typeof window !== 'undefined' ? window.INITIAL_CARD_LAYOUT : null;
+
+    function initStateLoad() {
+        updateBoardScaleVar();
+        if (initialLayout && typeof initialLayout === 'object') {
+            applyLoadedState(initialLayout);
+            if (typeof window !== 'undefined') {
+                window.INITIAL_CARD_LAYOUT = null;
+            }
+        } else {
+            renderDeck();
+        }
+        loadPersistedState();
+    }
+
+    if (boardImage && !boardImage.complete) {
+        boardImage.addEventListener('load', initStateLoad, { once: true });
+    } else {
+        initStateLoad();
+    }
 
     function ensureCardId(el) {
         if (!el) return undefined;

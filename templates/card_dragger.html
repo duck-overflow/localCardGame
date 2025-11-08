@@ -196,7 +196,7 @@
         <img id="board-image" src="{{ url_for('static', filename='assetsFolder/Battlemap.png') }}" alt="Board">
         <img id="draggable" class="board-card primary-card" data-card-id="primary-card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Mass Confusion_4_6.png') }}" alt="Draggable Card">
         <div id="deck" aria-live="polite" data-card-back="{{ url_for('static', filename='assetsFolder/background_card.png') }}">
-            <div class="label">Deck <span class="count">0</span></div>
+            <div class="label">Deck <span class="count">{{ initial_deck_size|default(0, true) }}</span></div>
             <div class="stack" role="button" tabindex="0" aria-label="Deck Stapel"></div>
         </div>
     </div>
@@ -213,6 +213,9 @@
             <img class="card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Magic Arsenal_4_X.png') }}" alt="Card Magic Arsenal">
         </div>
     </div>
+    <script>
+        window.INITIAL_CARD_LAYOUT = {{ initial_layout|tojson }};
+    </script>
     <script src="{{ url_for('static', filename='dragger.js') }}" defer></script>
 </body>
 </html>
