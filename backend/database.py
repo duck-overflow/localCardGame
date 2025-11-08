@@ -1,5 +1,8 @@
 import sqlite3
 import re
+import random
+from collections import Counter
+from uuid import uuid4
 from backend.playerData import Player
 
 # https://docs.python.org/3/library/sqlite3.html
@@ -11,6 +14,20 @@ cur.execute('CREATE TABLE IF NOT EXISTS deck(id, card, max, amount)')
 cur.execute('CREATE TABLE IF NOT EXISTS rolls(id, failedCheck, natOne, natTwenty, total)')
 cur.execute('CREATE TABLE IF NOT EXISTS talent_stats(id, talentName, talentLevel)')
 cur.execute('CREATE TABLE IF NOT EXISTS theme(id, theme_name)')
+cur.execute(
+    'CREATE TABLE IF NOT EXISTS card_positions('
+    'user_id INTEGER,'
+    'card_id TEXT,'
+    'card_src TEXT,'
+    'zone TEXT,'
+    'pos_x REAL,'
+    'pos_y REAL,'
+    'height_ratio REAL,'
+    'z_index INTEGER,'
+    'order_index INTEGER,'
+    'PRIMARY KEY(user_id, card_id)'
+    ')'
+)
 
 # Management Functions
 
@@ -19,11 +36,26 @@ def reset_data():
     cur.execute('DROP TABLE deck')
     cur.execute('DROP TABLE rolls')
     cur.execute('DROP TABLE talent_stats')
+    cur.execute('DROP TABLE IF EXISTS card_positions')
     cur.execute('CREATE TABLE IF NOT EXISTS player(username, password, id)')
     cur.execute('CREATE TABLE IF NOT EXISTS deck(id, card, max, amount)')
     cur.execute('CREATE TABLE IF NOT EXISTS rolls(id, failedCheck, natOne, natTwenty, total)')
     cur.execute('CREATE TABLE IF NOT EXISTS talent_stats(id, talentName, talentLevel)')
     cur.execute('CREATE TABLE IF NOT EXISTS theme(id, theme_name)')
+    cur.execute(
+        'CREATE TABLE IF NOT EXISTS card_positions('
+        'user_id INTEGER,'
+        'card_id TEXT,'
+        'card_src TEXT,'
+        'zone TEXT,'
+        'pos_x REAL,'
+        'pos_y REAL,'
+        'height_ratio REAL,'
+        'z_index INTEGER,'
+        'order_index INTEGER,'
+        'PRIMARY KEY(user_id, card_id)'
+        ')'
+    )
     print("Databases restored succesfuly")
     create_admin_user()
 
@@ -100,6 +132,7 @@ def delete_player_data(player):
     player_id = transform_username_id(player)
     cmd = 'DELETE FROM player WHERE id LIKE ?'
     cur.execute(cmd, (player_id,))
+    cur.execute('DELETE FROM card_positions WHERE user_id = ?', (player_id,))
     con.commit()
 
 def update_user_name(player, new_name):
@@ -198,7 +231,211 @@ def get_card_count(player):
     cur.execute(cmd)
     rows = cur.fetchall()
     con.commit()
-    return rows
+
+
+# Card layout persistence
+
+def _card_src_from_name(card_name):
+    if not card_name:
+        return None
+    return f"/static/assetsFolder/Cards/{card_name}"
+
+
+def _build_deck_composition(user_id):
+    """Return a Counter mapping card_src to quantity for the player's deck list."""
+    rows = cur.execute('SELECT card, amount FROM deck WHERE id = ?', (user_id,)).fetchall()
+    composition = Counter()
+    for card_name, amount in rows:
+        try:
+            count = int(amount)
+        except (TypeError, ValueError):
+            continue
+        if count <= 0:
+            continue
+        card_src = _card_src_from_name(card_name)
+        if card_src:
+            composition[card_src] += count
+    return composition
+
+
+def save_card_layout(player, board_cards, hand_cards, deck_cards=None):
+    """Persist draggable card layout for the given player."""
+    user_id = transform_username_id(player)
+    with con:
+        cur_new = con.cursor()
+        cur_new.execute('DELETE FROM card_positions WHERE user_id = ?', (user_id,))
+        insert_rows = []
+        for entry in board_cards:
+            insert_rows.append(
+                (
+                    user_id,
+                    entry['card_id'],
+                    entry['card_src'],
+                    'board',
+                    entry.get('pos_x'),
+                    entry.get('pos_y'),
+                    entry.get('height_ratio'),
+                    entry.get('z_index'),
+                    None,
+                )
+            )
+        for order_index, entry in enumerate(hand_cards):
+            insert_rows.append(
+                (
+                    user_id,
+                    entry['card_id'],
+                    entry['card_src'],
+                    'hand',
+                    None,
+                    None,
+                    None,
+                    None,
+                    entry.get('order_index', order_index),
+                )
+            )
+        for order_index, entry in enumerate(deck_cards or []):
+            insert_rows.append(
+                (
+                    user_id,
+                    entry['card_id'],
+                    entry['card_src'],
+                    'deck',
+                    None,
+                    None,
+                    None,
+                    None,
+                    entry.get('order_index', order_index),
+                )
+            )
+        if insert_rows:
+            cur_new.executemany(
+                'INSERT OR REPLACE INTO card_positions('
+                'user_id, card_id, card_src, zone, pos_x, pos_y, height_ratio, z_index, order_index'
+                ') VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                insert_rows,
+            )
+
+
+def _merge_missing_deck_cards(user_id, layout):
+    """Ensure deck zone contains every card from the user's deck list.
+
+    Returns a tuple of (deck_entries, modified: bool).
+    """
+    deck_entries = list(layout.get('deck', []))
+    board_entries = layout.get('board', [])
+    hand_entries = layout.get('hand', [])
+
+    composition = _build_deck_composition(user_id)
+    if not composition:
+        # Nothing to sync
+        return deck_entries, False
+
+    # Filter deck entries that correspond to current composition
+    filtered_deck = []
+    for entry in deck_entries:
+        src = entry.get('card_src')
+        if src and composition.get(src, 0) > 0:
+            filtered_deck.append(entry)
+    deck_entries = filtered_deck
+
+    counts = Counter()
+    for entry in board_entries:
+        src = entry.get('card_src')
+        if src:
+            counts[src] += 1
+    for entry in hand_entries:
+        src = entry.get('card_src')
+        if src:
+            counts[src] += 1
+    for entry in deck_entries:
+        src = entry.get('card_src')
+        if src:
+            counts[src] += 1
+
+    additions = []
+    for card_src, required in composition.items():
+        have = counts.get(card_src, 0)
+        missing = required - have
+        for _ in range(max(0, missing)):
+            additions.append(
+                {
+                    'card_id': f'deck-{uuid4()}',
+                    'card_src': card_src,
+                }
+            )
+
+    if additions:
+        rng = random.Random(user_id)
+        for entry in additions:
+            idx = 0
+            if deck_entries:
+                idx = rng.randint(0, len(deck_entries))
+            deck_entries.insert(idx, entry)
+
+    # Ensure sequential order_index values
+    for order_index, entry in enumerate(deck_entries):
+        entry['order_index'] = order_index
+
+    return deck_entries, bool(additions)
+
+
+def load_card_layout(player, sync_deck=True):
+    user_id = transform_username_id(player)
+    cmd = (
+        'SELECT card_id, card_src, zone, pos_x, pos_y, height_ratio, z_index, order_index '
+        'FROM card_positions WHERE user_id = ?'
+    )
+    res = cur.execute(cmd, (user_id,))
+    rows = res.fetchall()
+    board_cards = []
+    hand_cards = []
+    deck_cards = []
+    for card_id, card_src, zone, pos_x, pos_y, height_ratio, z_index, order_index in rows:
+        if zone == 'hand':
+            hand_cards.append(
+                {
+                    'card_id': card_id,
+                    'card_src': card_src,
+                    'order_index': order_index if order_index is not None else 0,
+                }
+            )
+        elif zone == 'deck':
+            deck_cards.append(
+                {
+                    'card_id': card_id,
+                    'card_src': card_src,
+                    'order_index': order_index if order_index is not None else 0,
+                }
+            )
+        else:
+            board_cards.append(
+                {
+                    'card_id': card_id,
+                    'card_src': card_src,
+                    'pos_x': pos_x,
+                    'pos_y': pos_y,
+                    'height_ratio': height_ratio,
+                    'z_index': z_index,
+                }
+            )
+    hand_cards.sort(key=lambda entry: entry['order_index'])
+    deck_cards.sort(key=lambda entry: entry['order_index'])
+
+    layout = {
+        'board': board_cards,
+        'hand': hand_cards,
+        'deck': deck_cards,
+    }
+
+    if sync_deck:
+        merged_deck, modified = _merge_missing_deck_cards(user_id, layout)
+        if modified or merged_deck != deck_cards:
+            layout['deck'] = merged_deck
+            # Persist the merged deck while keeping existing board/hand state
+            save_card_layout(player, board_cards, hand_cards, merged_deck)
+            return load_card_layout(player, sync_deck=False)
+
+    return layout
 
 # Dice Mechanic
 

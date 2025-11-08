@@ -7,7 +7,23 @@ from backend.utilFunctions import get_image_list, test_name_availability, check_
 from backend.utilFunctions import update_player_talents, prepare_talent_data
 from backend.utilFunctions import prepare_list_of_shame
 
-from backend.database import get_everything_player, get_all_player_data, add_player_data, get_last_id, reset_data, get_card_count, get_deck_amount, add_deck_data, delete_deck_data, get_card_amount, get_player_count, get_player_names, check_player_dice_check
+from backend.database import (
+    get_everything_player,
+    get_all_player_data,
+    add_player_data,
+    get_last_id,
+    reset_data,
+    get_card_count,
+    get_deck_amount,
+    add_deck_data,
+    delete_deck_data,
+    get_card_amount,
+    get_player_count,
+    get_player_names,
+    check_player_dice_check,
+    save_card_layout,
+    load_card_layout,
+)
 from backend.database import transform_username_id
 from backend.database import update_user_name, update_user_password
 
@@ -198,6 +214,27 @@ def remove_card_from_deck(card_name):
 @app.route('/card_dragger')
 def open_carddragger():
     return render_template('card_dragger.html')
+
+
+@app.route('/api/card-positions', methods=['GET', 'POST'])
+def card_positions():
+    user = session.get('username')
+    if user is None:
+        return jsonify({'error': 'not authenticated'}), 401
+    if request.method == 'GET':
+        layout = load_card_layout(user)
+        return jsonify(layout)
+
+    payload = request.get_json(silent=True) or {}
+    board_cards = payload.get('board', [])
+    hand_cards = payload.get('hand', [])
+    deck_cards = payload.get('deck', [])
+    # Basic validation to avoid malformed writes
+    try:
+        save_card_layout(user, list(board_cards), list(hand_cards), list(deck_cards))
+    except Exception as exc:  # pragma: no cover - unexpected database issues
+        return jsonify({'error': str(exc)}), 400
+    return jsonify({'status': 'ok'})
 
 @app.route('/sheet')
 def open_sheet():
