@@ -799,7 +799,7 @@ if (!draggable || !container) {
     }
 
     function createBoardCard(src, options = {}) {
-        const { cardId, skipPersist = false } = options;
+        const { cardId, skipPersist = false, fromState = false } = options;
         const el = document.createElement('img');
         el.className = 'board-card';
         el.src = src; el.alt = 'Card';
@@ -835,8 +835,11 @@ if (!draggable || !container) {
                 normalizedCache.set(entry.card_id, entry);
             }
         };
-        if (el.complete) requestAnimationFrame(place);
-        else el.addEventListener('load', () => requestAnimationFrame(place), { once: true });
+        if (!fromState) {
+            const queuePlacement = () => requestAnimationFrame(place);
+            if (el.complete) queuePlacement();
+            else el.addEventListener('load', queuePlacement, { once: true });
+        }
         // dblclick zoom
         el.addEventListener('dblclick', (ev) => { ev.preventDefault(); openZoom(src); });
         return el;
