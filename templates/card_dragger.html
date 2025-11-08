@@ -8,10 +8,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/draggable.css') }}">
     <script defer src="{{ url_for('static', filename='theme.js') }}"></script>
     <script src="{{ url_for('static', filename='pleaserotate.js') }}" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@interactjs/interactjs/dist/interact.min.js" defer></script>
     <style>
         :root {
             --hand-h: clamp(160px, 28vh, 240px);
             --board-max-h: 720px; /* Background nicht zu groß werden lassen */
+            --board-card-height: clamp(170px, 36vh, 420px);
         }
         html, body { height: 100%; margin: 0; }
         body {
@@ -27,31 +29,79 @@
             height: calc(100dvh - var(--hand-h));
             overflow: hidden;
             border-bottom: 1px solid rgba(255,255,255,0.08);
-            display: grid;
-            place-items: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             background: transparent;
+            padding: clamp(8px, 2vh, 20px);
+            box-sizing: border-box;
         }
         /* Das Board-Bild skaliert dynamisch und bleibt zentriert */
         #board-image {
             width: 100%;
-            height: 100%;
-            max-height: var(--board-max-h); /* Board wird nicht zu groß */
+            height: auto;
+            max-height: min(100%, var(--board-max-h)); /* Board wird nicht zu groß */
+            max-width: 100%;
             object-fit: contain; /* wie background-size: contain */
             pointer-events: none; /* Bild blockiert keine Pointer */
             user-select: none;
         }
         /* Ziehbare Karte */
-        #draggable {
+        .board-card {
             position: absolute; /* über dem Board bewegbar */
             top: 0; left: 0;
-            height: clamp(170px, 36vh, 420px); /* höhenbasiert -> schmaler Look */
+            height: var(--board-card-height, clamp(170px, 36vh, 420px));
             width: auto;
-            max-height: 40vh;
+            max-height: 42vh;
             user-select: none;
             -webkit-user-drag: none;
             touch-action: none; /* verhindert Scrollen beim Draggen auf Mobilgeräten */
             cursor: grab;
             z-index: 2;
+            transition: transform 90ms ease-out;
+        }
+        #deck {
+            position: absolute;
+            right: clamp(12px, 3vw, 24px);
+            bottom: clamp(12px, 3vh, 24px);
+            width: clamp(82px, 12vw, 130px);
+            pointer-events: none;
+            color: var(--fg, #e6e6e6);
+            z-index: 4;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+        }
+        #deck .label {
+            font-size: 0.85rem;
+            opacity: 0.85;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+        }
+        #deck .stack {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 63 / 88;
+            margin-top: 6px;
+        }
+        #deck .deck-card {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+            filter: saturate(0.4) brightness(0.7);
+            transform: translate(calc(var(--offset, 0) * 3px), calc(var(--offset, 0) * -3px));
+        }
+        #deck .stack::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.18);
+            pointer-events: none;
         }
         /* Unterer Bereich für Handkarten — fix am unteren Rand */
         #hand {
@@ -118,7 +168,8 @@
             #hand .title { font-size: 0.85rem; }
             #hand .strip { gap: 10px; padding: 8px 10px; }
             #hand .card { height: calc(var(--hand-h) - 22px); max-height: 190px; }
-            #draggable { height: clamp(160px, 34vh, 360px); max-height: 36vh; }
+            .board-card { height: clamp(160px, 34vh, 360px); max-height: 36vh; }
+            #deck { width: clamp(72px, 18vw, 110px); }
         }
 
         @media (max-width: 520px) {
@@ -128,8 +179,9 @@
             #hand .title { font-size: 0.8rem; padding: 6px 10px 0; }
             #hand .strip { gap: 8px; padding: 8px 8px; }
             #hand .card { height: calc(var(--hand-h) - 18px); max-height: 170px; border-radius: 8px; }
-            #draggable { height: clamp(150px, 32vh, 320px); max-height: 34vh; }
+            .board-card { height: clamp(150px, 32vh, 320px); max-height: 34vh; }
             #back-btn { top: max(8px, env(safe-area-inset-top, 8px)); left: max(8px, env(safe-area-inset-left, 8px)); }
+            #deck { width: clamp(68px, 22vw, 96px); }
         }
     </style>
 </head>
@@ -137,7 +189,11 @@
     <div id="container">
     <button id="back-btn" type="button">Zurück</button>
         <img id="board-image" src="{{ url_for('static', filename='assetsFolder/Battlemap.png') }}" alt="Board">
-        <img id="draggable" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Mass Confusion_4_6.png') }}" alt="Draggable Card">
+        <img id="draggable" class="board-card primary-card" data-card-id="primary-card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Mass Confusion_4_6.png') }}" alt="Draggable Card">
+        <div id="deck" aria-live="polite">
+            <div class="label">Deck <span class="count">0</span></div>
+            <div class="stack" role="presentation"></div>
+        </div>
     </div>
     <!-- Handkarten-Bereich unter dem Hintergrund -->
     <div id="hand">
@@ -152,6 +208,6 @@
             <img class="card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Magic Arsenal_4_X.png') }}" alt="Card Magic Arsenal">
         </div>
     </div>
-    <script src="{{ url_for('static', filename='dragger.js') }}"></script>
+    <script src="{{ url_for('static', filename='dragger.js') }}" defer></script>
 </body>
 </html>
