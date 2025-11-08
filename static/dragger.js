@@ -9,6 +9,17 @@ if (!draggable || !container) {
 
     draggable.style.willChange = 'transform';
     draggable.style.transition = 'transform 90ms ease-out';
+    ensureCardId(draggable);
+
+    const initStateLoad = () => {
+        updateBoardScaleVar();
+        loadPersistedState();
+    };
+    if (boardImage && !boardImage.complete) {
+        boardImage.addEventListener('load', initStateLoad, { once: true });
+    } else {
+        initStateLoad();
+    }
 
     let isDragging = false;
     let pointerId = null;
@@ -18,6 +29,283 @@ if (!draggable || !container) {
     let lastTapTime = 0;
     const TAP_DT = 300;
     const TAP_MOVE = 8;
+    const CARD_STATE_ENDPOINT = '/api/card-positions';
+    const handStrip = document.querySelector('#hand .strip');
+    const deckContainer = document.getElementById('deck');
+    const deckStack = deckContainer ? deckContainer.querySelector('.stack') : null;
+    const deckCountLabel = deckContainer ? deckContainer.querySelector('.count') : null;
+    const normalizedCache = new Map();
+    let deckState = [];
+    let latestState = null;
+    let persistTimer = null;
+    let zCounter = 10;
+
+    function ensureCardId(el) {
+        if (!el) return undefined;
+        if (!el.dataset.cardId) {
+            const rand = Math.random().toString(16).slice(2);
+            const fallback = `card-${Date.now()}-${rand}`;
+            if (window.crypto && window.crypto.randomUUID) {
+                el.dataset.cardId = window.crypto.randomUUID();
+            } else {
+                el.dataset.cardId = fallback;
+            }
+        }
+        return el.dataset.cardId;
+    }
+
+    function createClientId(prefix = 'card') {
+        const rand = Math.random().toString(16).slice(2);
+        const fallback = `${prefix}-${Date.now()}-${rand}`;
+        if (window.crypto && window.crypto.randomUUID) {
+            return `${prefix}-${window.crypto.randomUUID()}`;
+        }
+        return fallback;
+    }
+
+    function getBoardMetrics() {
+        const contRect = container.getBoundingClientRect();
+        const boardRect = boardImage ? boardImage.getBoundingClientRect() : contRect;
+        const originX = Math.max(0, boardRect.left - contRect.left);
+        const originY = Math.max(0, boardRect.top - contRect.top);
+        const width = boardRect.width || contRect.width || 1;
+        const height = boardRect.height || contRect.height || 1;
+        return { originX, originY, width, height };
+    }
+
+    function updateBoardScaleVar() {
+        const metrics = getBoardMetrics();
+        const relativeHeight = metrics.height * 0.28;
+        const bounded = Math.max(120, Math.min(relativeHeight, 460));
+        document.documentElement.style.setProperty('--board-card-height', `${bounded}px`);
+    }
+
+    function updateCacheForElement(el) {
+        if (!el) return null;
+        const id = ensureCardId(el);
+        const metrics = getBoardMetrics();
+        const t = getTranslate(el);
+        const normalizedX = (t.x - metrics.originX) / metrics.width;
+        const normalizedY = (t.y - metrics.originY) / metrics.height;
+        const rect = el.getBoundingClientRect();
+        const ratio = metrics.height ? rect.height / metrics.height : null;
+        const zIndex = parseInt(window.getComputedStyle(el).zIndex || '0', 10) || 0;
+        const entry = {
+            card_id: id,
+            card_src: el.src,
+            pos_x: normalizedX,
+            pos_y: normalizedY,
+            height_ratio: ratio,
+            z_index: zIndex,
+        };
+        normalizedCache.set(id, entry);
+        return entry;
+    }
+
+    function applyPositionFromCache(el, entry, metrics = getBoardMetrics()) {
+        if (!el || !entry) return;
+        if (typeof entry.height_ratio === 'number' && metrics.height) {
+            const px = Math.max(48, entry.height_ratio * metrics.height);
+            el.style.height = `${px}px`;
+        }
+        if (typeof entry.z_index === 'number') {
+            el.style.zIndex = String(entry.z_index);
+        }
+        const targetX = metrics.originX + (entry.pos_x ?? 0) * metrics.width;
+        const targetY = metrics.originY + (entry.pos_y ?? 0) * metrics.height;
+        moveElementTo(el, targetX, targetY);
+    }
+
+    function applyNormalizedPositions() {
+        const metrics = getBoardMetrics();
+        normalizedCache.forEach((entry, id) => {
+            const el = container.querySelector(`.board-card[data-card-id="${id}"]`);
+            if (el) applyPositionFromCache(el, entry, metrics);
+        });
+    }
+
+    function collectBoardState() {
+        const cards = Array.from(container.querySelectorAll('.board-card'));
+        const state = cards
+            .map((el) => updateCacheForElement(el))
+            .filter(Boolean);
+        return state;
+    }
+
+    function collectHandState() {
+        if (!handStrip) return [];
+        const cards = Array.from(handStrip.querySelectorAll('.card'));
+        return cards.map((el) => ({
+            card_id: ensureCardId(el),
+            card_src: el.src,
+        }));
+    }
+
+    function renderDeck() {
+        if (!deckStack) {
+            if (deckCountLabel) deckCountLabel.textContent = '0';
+            return;
+        }
+        deckStack.innerHTML = '';
+        if (!Array.isArray(deckState) || deckState.length === 0) {
+            if (deckCountLabel) deckCountLabel.textContent = '0';
+            return;
+        }
+        const maxVisible = Math.min(deckState.length, 5);
+        const visible = deckState.slice(0, maxVisible).reverse();
+        visible.forEach((entry, idx) => {
+            if (!entry || !entry.card_src) return;
+            const img = document.createElement('img');
+            img.className = 'deck-card';
+            img.src = entry.card_src;
+            img.alt = 'Deck card';
+            img.dataset.cardId = entry.card_id;
+            const offset = maxVisible - idx - 1;
+            img.style.setProperty('--offset', offset);
+            deckStack.appendChild(img);
+        });
+        if (deckCountLabel) deckCountLabel.textContent = String(deckState.length);
+    }
+
+    function setDeckState(entries) {
+        if (!Array.isArray(entries) || entries.length === 0) {
+            deckState = [];
+            renderDeck();
+            return;
+        }
+        const sorted = [...entries]
+            .filter((entry) => entry && entry.card_src)
+            .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+        deckState = sorted.map((entry) => ({
+            card_id: entry.card_id || createClientId('deck'),
+            card_src: entry.card_src,
+        }));
+        renderDeck();
+    }
+
+    function collectDeckState() {
+        if (!Array.isArray(deckState)) return [];
+        return deckState.map((entry, index) => ({
+            card_id: entry.card_id || createClientId('deck'),
+            card_src: entry.card_src,
+            order_index: index,
+        }));
+    }
+
+    renderDeck();
+
+    function getStatePayload() {
+        const board = collectBoardState();
+        const hand = collectHandState();
+        const deck = collectDeckState();
+        latestState = { board, hand, deck };
+        return latestState;
+    }
+
+    async function persistState(options = {}) {
+        const payload = getStatePayload();
+        try {
+            if (options.keepalive && navigator.sendBeacon) {
+                const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+                navigator.sendBeacon(CARD_STATE_ENDPOINT, blob);
+                return;
+            }
+            await fetch(CARD_STATE_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                keepalive: !!options.keepalive,
+                credentials: 'same-origin',
+            });
+        } catch (error) {
+            console.warn('Persisting card layout failed', error);
+        }
+    }
+
+    function schedulePersist(immediate = false) {
+        if (persistTimer) clearTimeout(persistTimer);
+        if (immediate) {
+            persistState();
+        } else {
+            persistTimer = setTimeout(() => persistState(), 200);
+        }
+    }
+
+    function rebuildHand(entries) {
+        if (!handStrip) return;
+        if (!Array.isArray(entries) || entries.length === 0) {
+            handStrip.querySelectorAll('.card').forEach((el) => {
+                ensureCardId(el);
+            });
+            setupHandCardZoom();
+            return;
+        }
+        handStrip.innerHTML = '';
+        entries.forEach((entry) => {
+            if (!entry || !entry.card_src) return;
+            const card = document.createElement('img');
+            card.className = 'card';
+            card.src = entry.card_src;
+            card.alt = 'Card';
+            if (entry.card_id) card.dataset.cardId = entry.card_id;
+            handStrip.appendChild(card);
+        });
+        setupHandCardZoom();
+    }
+
+    function applyLoadedState(state) {
+        if (!state) {
+            setupHandCardZoom();
+            return;
+        }
+        const boardEntries = Array.isArray(state.board) ? state.board : [];
+        const handEntries = Array.isArray(state.hand) ? state.hand : [];
+        const deckEntries = Array.isArray(state.deck) ? state.deck : [];
+        const existing = new Map();
+        Array.from(container.querySelectorAll('.board-card')).forEach((el) => {
+            existing.set(ensureCardId(el), el);
+        });
+        const seen = new Set();
+        boardEntries.forEach((entry) => {
+            if (!entry || !entry.card_id || !entry.card_src) return;
+            let el = existing.get(entry.card_id);
+            if (!el) {
+                el = createBoardCard(entry.card_src, { cardId: entry.card_id, skipPersist: true, fromState: true });
+                existing.set(entry.card_id, el);
+            } else if (el.src !== entry.card_src) {
+                el.src = entry.card_src;
+            }
+            seen.add(entry.card_id);
+        });
+        existing.forEach((el, id) => {
+            if (!seen.has(id) && id !== 'primary-card') {
+                normalizedCache.delete(id);
+                el.remove();
+            }
+        });
+        normalizedCache.clear();
+        boardEntries.forEach((entry) => {
+            normalizedCache.set(entry.card_id, entry);
+        });
+        requestAnimationFrame(() => {
+            updateBoardScaleVar();
+            applyNormalizedPositions();
+        });
+        rebuildHand(handEntries);
+        setDeckState(deckEntries);
+        latestState = { board: boardEntries, hand: handEntries, deck: collectDeckState() };
+    }
+
+    async function loadPersistedState() {
+        try {
+            const response = await fetch(CARD_STATE_ENDPOINT, { credentials: 'same-origin' });
+            if (!response.ok) return;
+            const data = await response.json();
+            applyLoadedState(data);
+        } catch (error) {
+            console.warn('Unable to load card layout', error);
+        }
+    }
 
     function getTranslate(el) {
         const st = window.getComputedStyle(el);
@@ -161,8 +449,10 @@ if (!draggable || !container) {
         try { draggable.releasePointerCapture(pointerId); } catch {}
         pointerId = null;
         // Persist new base
-    const finalT = getTranslate(draggable);
-    baseX = finalT.x; baseY = finalT.y;
+        const finalT = getTranslate(draggable);
+        baseX = finalT.x; baseY = finalT.y;
+        updateCacheForElement(draggable);
+        schedulePersist();
 
         // Double-tap to zoom (use small move threshold to avoid triggering after drags)
         const moved = Math.hypot(e.clientX - startX, e.clientY - startY);
@@ -186,6 +476,7 @@ if (!draggable || !container) {
         const ny = clamp(t.y, minY, maxY);
         setTranslate(draggable, nx, ny);
         baseX = nx; baseY = ny;
+        updateCacheForElement(draggable);
     }
 
     draggable.addEventListener('pointerdown', onPointerDown, { passive: false });
@@ -194,10 +485,22 @@ if (!draggable || !container) {
     window.addEventListener('pointercancel', onPointerUp);
     window.addEventListener('resize', () => {
         // kurz warten, bis Layout stabil ist
-        requestAnimationFrame(clampIntoBounds);
+        requestAnimationFrame(() => {
+            updateBoardScaleVar();
+            applyNormalizedPositions();
+            clampIntoBounds();
+        });
     });
     // initial sicherstellen, dass die Karte im Board liegt
     requestAnimationFrame(clampIntoBounds);
+
+    window.addEventListener('beforeunload', () => {
+        try {
+            persistState({ keepalive: true });
+        } catch (error) {
+            console.warn('Unable to persist state on unload', error);
+        }
+    });
 
     // Back button
     const backBtn = document.getElementById('back-btn');
@@ -385,8 +688,6 @@ if (!draggable || !container) {
     });
 
     // ---------- Mehrere Board-Karten: Erzeugen, Draggen, Snap ----------
-    let zCounter = 10;
-
     function getAllowedBoundsFor(el) {
         const contRect = container.getBoundingClientRect();
         const boardRect = boardImage ? boardImage.getBoundingClientRect() : contRect;
@@ -448,7 +749,8 @@ if (!draggable || !container) {
         setTranslate(el, clamp(x, minX, maxX), clamp(y, minY, maxY));
     }
 
-    function attachDragTo(el) {
+    function attachDragTo(el, options = {}) {
+        ensureCardId(el);
         el.style.willChange = 'transform';
         el.style.transition = 'transform 90ms ease-out';
         el.style.cursor = 'grab';
@@ -486,6 +788,9 @@ if (!draggable || !container) {
             dragging = false; el.style.cursor = 'grab';
             try { el.releasePointerCapture(ppId); } catch {}
             ppId = null;
+            const entry = updateCacheForElement(el);
+            if (typeof options.onDrop === 'function') options.onDrop(entry);
+            else schedulePersist();
         }
         el.addEventListener('pointerdown', onDown, { passive: false });
         window.addEventListener('pointermove', onMove, { passive: false });
@@ -493,7 +798,8 @@ if (!draggable || !container) {
         window.addEventListener('pointercancel', onUp);
     }
 
-    function createBoardCard(src) {
+    function createBoardCard(src, options = {}) {
+        const { cardId, skipPersist = false, fromState = false } = options;
         const el = document.createElement('img');
         el.className = 'board-card';
         el.src = src; el.alt = 'Card';
@@ -509,6 +815,8 @@ if (!draggable || !container) {
             el.style.height = dcs.height;
             el.style.width = 'auto';
         } catch {}
+        if (cardId) el.dataset.cardId = cardId;
+        ensureCardId(el);
         zCounter += 1; el.style.zIndex = String(10 + zCounter);
         container.appendChild(el);
         attachDragTo(el);
@@ -520,9 +828,18 @@ if (!draggable || !container) {
             const cy = (contRect.height - r.height) / 2;
             const snapped = snapToFor(el, cx, cy);
             moveElementTo(el, snapped.x, snapped.y);
+            const entry = updateCacheForElement(el);
+            if (!skipPersist) {
+                schedulePersist();
+            } else if (entry) {
+                normalizedCache.set(entry.card_id, entry);
+            }
         };
-        if (el.complete) requestAnimationFrame(place);
-        else el.addEventListener('load', () => requestAnimationFrame(place), { once: true });
+        if (!fromState) {
+            const queuePlacement = () => requestAnimationFrame(place);
+            if (el.complete) queuePlacement();
+            else el.addEventListener('load', queuePlacement, { once: true });
+        }
         // dblclick zoom
         el.addEventListener('dblclick', (ev) => { ev.preventDefault(); openZoom(src); });
         return el;
@@ -535,6 +852,9 @@ if (!draggable || !container) {
         const x = graveyardRect.x + padding + Math.random() * 6;
         const y = graveyardRect.y + padding + Math.random() * 6;
         moveElementTo(el, x, y);
+        const entry = updateCacheForElement(el);
+        if (entry) normalizedCache.set(entry.card_id, entry);
+        schedulePersist();
     }
 
     // Handkarten: Play (single tap) / Zoom (double tap) / Graveyard (long press or right click)
@@ -545,6 +865,9 @@ if (!draggable || !container) {
         const singleTapTimers = new WeakMap();
         const longPressTimers = new WeakMap();
         cards.forEach((el) => {
+            if (el.dataset.bound === '1') return;
+            el.dataset.bound = '1';
+            ensureCardId(el);
             // track down for move distance
             el.addEventListener('pointerdown', (ev) => {
                 downPos.set(el, { x: ev.clientX, y: ev.clientY });
@@ -554,10 +877,11 @@ if (!draggable || !container) {
                     // nur auslösen, wenn seitdem kein großer Move kam
                     const d = downPos.get(el) || { x: ev.clientX, y: ev.clientY };
                     if (Math.hypot(d.x - ev.clientX, d.y - ev.clientY) < TAP_MOVE) {
-                        const newCard = createBoardCard(el.src);
+                        const newCard = createBoardCard(el.src, { cardId: ensureCardId(el) });
                         moveCardToGraveyard(newCard);
                         // aus Hand entfernen
                         el.remove();
+                        schedulePersist();
                     }
                 }, 600);
                 longPressTimers.set(el, lp);
@@ -579,10 +903,11 @@ if (!draggable || !container) {
                         lastTapMap.set(el, now);
                         // Single-Tap verzögert ausführen (Play aufs Feld)
                         const tId = setTimeout(() => {
-                            const newCard = createBoardCard(el.src);
+                            const newCard = createBoardCard(el.src, { cardId: ensureCardId(el) });
                             // wenn Snap-Punkte existieren, wurde createBoardCard bereits zentriert+gesnapped
                             // Karte aus der Hand entfernen
                             el.remove();
+                            schedulePersist();
                         }, TAP_DT + 10);
                         singleTapTimers.set(el, tId);
                     }
@@ -595,17 +920,19 @@ if (!draggable || !container) {
                 if (ev.altKey || ev.ctrlKey) {
                     ev.preventDefault();
                     const tId = singleTapTimers.get(el); if (tId) clearTimeout(tId);
-                    const newCard = createBoardCard(el.src);
+                    const newCard = createBoardCard(el.src, { cardId: ensureCardId(el) });
                     moveCardToGraveyard(newCard);
                     el.remove();
+                    schedulePersist();
                 }
             });
             // Kontextmenü (Rechtsklick) -> Graveyard
             el.addEventListener('contextmenu', (ev) => {
                 ev.preventDefault();
-                const newCard = createBoardCard(el.src);
+                const newCard = createBoardCard(el.src, { cardId: ensureCardId(el) });
                 moveCardToGraveyard(newCard);
                 el.remove();
+                schedulePersist();
             });
             // Maus-Doppelklick (Desktop) separat für schnelle Zoom-Reaktion
             el.addEventListener('dblclick', (ev) => {
