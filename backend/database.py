@@ -231,6 +231,7 @@ def get_card_count(player):
     cur.execute(cmd)
     rows = cur.fetchall()
     con.commit()
+    return rows
 
 
 # Card layout persistence
