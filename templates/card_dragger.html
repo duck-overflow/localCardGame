@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/draggable.css') }}">
     <script defer src="{{ url_for('static', filename='theme.js') }}"></script>
     <script src="{{ url_for('static', filename='pleaserotate.js') }}" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@interactjs/interactjs/dist/interact.min.js" defer></script>
     <style>
         :root {
             --hand-h: clamp(160px, 28vh, 240px);
@@ -207,6 +208,6 @@
             <img class="card" src="{{ url_for('static', filename='assetsFolder/Cards/Basic_spell_Magic Arsenal_4_X.png') }}" alt="Card Magic Arsenal">
         </div>
     </div>
-    <script src="{{ url_for('static', filename='dragger.js') }}"></script>
+    <script src="{{ url_for('static', filename='dragger.js') }}" defer></script>
 </body>
 </html>

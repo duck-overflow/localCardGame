@@ -21,12 +21,7 @@ if (!draggable || !container) {
         initStateLoad();
     }
 
-    let isDragging = false;
-    let pointerId = null;
-    let startX = 0, startY = 0;
-    let baseX = 0, baseY = 0;
     let isZoomOpen = false;
-    let lastTapTime = 0;
     const TAP_DT = 300;
     const TAP_MOVE = 8;
     const CARD_STATE_ENDPOINT = '/api/card-positions';
@@ -290,6 +285,7 @@ if (!draggable || !container) {
         requestAnimationFrame(() => {
             updateBoardScaleVar();
             applyNormalizedPositions();
+            clampAllBoardCards();
         });
         rebuildHand(handEntries);
         setDeckState(deckEntries);
@@ -333,166 +329,32 @@ if (!draggable || !container) {
         return Math.max(min, Math.min(max, val));
     }
 
-    function getSnapTargets() {
-        // Elements with class 'snap-point' inside container (e.g. slots)
-        // We convert them into TARGET TOP-LEFT positions that would center
-        // the card over the snap element by default. This avoids a visual
-        // offset when snapping into frames.
-        const rectC = container.getBoundingClientRect();
-        const cardRect = draggable.getBoundingClientRect();
-        const cardW = cardRect.width;
-        const cardH = cardRect.height;
-        const points = Array.from(container.querySelectorAll('.snap-point')).map((el) => {
-            const r = el.getBoundingClientRect();
-            const align = el.dataset.snapAlign || 'center'; // 'center' | 'topleft'
-            if (align === 'topleft') {
-                // align card's top-left to element's top-left
-                return { x: r.left - rectC.left, y: r.top - rectC.top, cx: r.left - rectC.left + r.width/2, cy: r.top - rectC.top + r.height/2 };
-            }
-            // Default: place card centered inside the snap element
-            const tx = (r.left - rectC.left) + (r.width - cardW) / 2;
-            const ty = (r.top - rectC.top) + (r.height - cardH) / 2;
-            return { x: tx, y: ty, cx: tx + cardW/2, cy: ty + cardH/2 };
-        });
-        return points;
+    function clampElementIntoBounds(el) {
+        if (!el) return;
+        const t = getTranslate(el);
+        moveElementTo(el, t.x, t.y);
     }
 
-    function snapTo(x, y) {
-        const points = getSnapTargets();
-        if (points.length > 0) {
-            // Choose the snap whose CENTER is closest to the card center
-            const cardW = draggable.getBoundingClientRect().width;
-            const cardH = draggable.getBoundingClientRect().height;
-            const cardCX = x + cardW / 2;
-            const cardCY = y + cardH / 2;
-            let best = null, bestD = Infinity;
-            for (const p of points) {
-                // Ensure cx/cy exist even for topleft alignment
-                const cx = p.cx ?? (p.x + cardW/2);
-                const cy = p.cy ?? (p.y + cardH/2);
-                const dx = cx - cardCX;
-                const dy = cy - cardCY;
-                const d2 = dx*dx + dy*dy;
-                if (d2 < bestD) { bestD = d2; best = p; }
-            }
-            return { x: best.x, y: best.y };
-        }
-        // Fallback: dynamic grid snapping basierend auf Boardgröße
-        // Anchor grid to the board's visible area so snapping doesn't drift
-        const contRect = container.getBoundingClientRect();
-        const boardRect = boardImage ? boardImage.getBoundingClientRect() : contRect;
-        const originX = Math.max(0, boardRect.left - contRect.left);
-        const originY = Math.max(0, boardRect.top - contRect.top);
-        const grid = Math.max(24, Math.min(64, Math.floor(boardRect.width / 24)));
-        return {
-            x: Math.round((x - originX) / grid) * grid + originX,
-            y: Math.round((y - originY) / grid) * grid + originY,
-        };
+    function clampAllBoardCards() {
+        const cards = Array.from(container.querySelectorAll('.board-card'));
+        cards.forEach((card) => clampElementIntoBounds(card));
     }
 
-    function onPointerDown(e) {
-    if (isZoomOpen) return; // ignore drags while zoom is open
-        if (pointerId !== null) return; // ignore multi-pointer
-        pointerId = e.pointerId;
-        draggable.setPointerCapture(pointerId);
-        isDragging = true;
-        const t = getTranslate(draggable);
-        baseX = t.x; baseY = t.y;
-        startX = e.clientX; startY = e.clientY;
-        draggable.style.cursor = 'grabbing';
-    }
-
-    function getAllowedBounds() {
-        // Begrenze die Karte auf den sichtbaren Bereich des Board-Bildes
-        const contRect = container.getBoundingClientRect();
-        const boardRect = boardImage ? boardImage.getBoundingClientRect() : contRect;
-        const elRect = draggable.getBoundingClientRect();
-        const minX = Math.max(0, boardRect.left - contRect.left);
-        const minY = Math.max(0, boardRect.top - contRect.top);
-        const maxX = Math.min(contRect.width, boardRect.right - contRect.left) - elRect.width;
-        const maxY = Math.min(contRect.height, boardRect.bottom - contRect.top) - elRect.height;
-        return { minX, minY, maxX: Math.max(minX, maxX), maxY: Math.max(minY, maxY) };
-    }
-
-    function onPointerMove(e) {
-        if (!isDragging || e.pointerId !== pointerId) return;
-        // Prevent page scroll/zoom while dragging
-        e.preventDefault();
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-
-        // Clamp innerhalb des sichtbaren Board-Bildes
-        const { minX, minY, maxX, maxY } = getAllowedBounds();
-        const nx = clamp(baseX + dx, minX, maxX);
-        const ny = clamp(baseY + dy, minY, maxY);
-        setTranslate(draggable, nx, ny);
-    }
-
-    function onPointerUp(e) {
-        if (e.pointerId !== pointerId) return;
-    // Snap into place
-        const t = getTranslate(draggable);
-        // Graveyard auto-snap: wenn im Friedhofsbereich losgelassen → dorthin legen
-        const dRect = draggable.getBoundingClientRect();
-        const centerX = t.x + dRect.width / 2;
-        const centerY = t.y + dRect.height / 2;
-        if (isPointInGraveyard(centerX, centerY)) {
-            moveCardToGraveyard(draggable);
-        } else {
-            const snapped = snapTo(t.x, t.y);
-            const { minX, minY, maxX, maxY } = getAllowedBounds();
-            setTranslate(draggable, clamp(snapped.x, minX, maxX), clamp(snapped.y, minY, maxY));
-        }
-
-        isDragging = false;
-        draggable.style.cursor = 'grab';
-        try { draggable.releasePointerCapture(pointerId); } catch {}
-        pointerId = null;
-        // Persist new base
-        const finalT = getTranslate(draggable);
-        baseX = finalT.x; baseY = finalT.y;
-        updateCacheForElement(draggable);
-        schedulePersist();
-
-        // Double-tap to zoom (use small move threshold to avoid triggering after drags)
-        const moved = Math.hypot(e.clientX - startX, e.clientY - startY);
-        const now = Date.now();
-        if (moved < TAP_MOVE) {
-            if (now - lastTapTime < TAP_DT) {
-                openZoom();
-                lastTapTime = 0; // reset
-            } else {
-                lastTapTime = now;
-            }
-        } else {
-            lastTapTime = 0;
-        }
-    }
-
-    function clampIntoBounds() {
-        const t = getTranslate(draggable);
-        const { minX, minY, maxX, maxY } = getAllowedBounds();
-        const nx = clamp(t.x, minX, maxX);
-        const ny = clamp(t.y, minY, maxY);
-        setTranslate(draggable, nx, ny);
-        baseX = nx; baseY = ny;
-        updateCacheForElement(draggable);
-    }
-
-    draggable.addEventListener('pointerdown', onPointerDown, { passive: false });
-    window.addEventListener('pointermove', onPointerMove, { passive: false });
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('pointercancel', onPointerUp);
     window.addEventListener('resize', () => {
-        // kurz warten, bis Layout stabil ist
         requestAnimationFrame(() => {
             updateBoardScaleVar();
             applyNormalizedPositions();
-            clampIntoBounds();
+            clampAllBoardCards();
         });
     });
-    // initial sicherstellen, dass die Karte im Board liegt
-    requestAnimationFrame(clampIntoBounds);
+
+    window.addEventListener('beforeunload', () => {
+        try {
+            persistState({ keepalive: true });
+        } catch (error) {
+            console.warn('Unable to persist state on unload', error);
+        }
+    });
 
     window.addEventListener('beforeunload', () => {
         try {
@@ -756,46 +618,74 @@ if (!draggable || !container) {
         el.style.cursor = 'grab';
         el.style.touchAction = 'none';
 
-        let ppId = null, dragging = false, sx = 0, sy = 0, bx = 0, by = 0;
-        function onDown(ev) {
-            if (ppId !== null) return;
-            ppId = ev.pointerId; el.setPointerCapture(ppId);
-            dragging = true; const t = getTranslate(el); bx = t.x; by = t.y; sx = ev.clientX; sy = ev.clientY;
-            el.style.cursor = 'grabbing';
-            // bring to front
-            zCounter += 1; el.style.zIndex = String(10 + zCounter);
+        if (typeof window.interact !== 'function') {
+            console.warn('Interact.js not available – drag and drop disabled for card', el);
+            return;
         }
-        function onMove(ev) {
-            if (!dragging || ev.pointerId !== ppId) return; ev.preventDefault();
-            const dx = ev.clientX - sx; const dy = ev.clientY - sy;
-            const { minX, minY, maxX, maxY } = getAllowedBoundsFor(el);
-            const nx = clamp(bx + dx, minX, maxX); const ny = clamp(by + dy, minY, maxY);
-            setTranslate(el, nx, ny);
-        }
-        function onUp(ev) {
-            if (ev.pointerId !== ppId) return;
+
+        let currentX = 0;
+        let currentY = 0;
+
+        const syncFromTransform = () => {
             const t = getTranslate(el);
-            const rect = el.getBoundingClientRect();
-            const cx = t.x + rect.width/2;
-            const cy = t.y + rect.height/2;
-            if (isPointInGraveyard(cx, cy)) {
-                moveCardToGraveyard(el);
-            } else {
-                const snapped = snapToFor(el, t.x, t.y);
-                const { minX, minY, maxX, maxY } = getAllowedBoundsFor(el);
-                setTranslate(el, clamp(snapped.x, minX, maxX), clamp(snapped.y, minY, maxY));
-            }
-            dragging = false; el.style.cursor = 'grab';
-            try { el.releasePointerCapture(ppId); } catch {}
-            ppId = null;
-            const entry = updateCacheForElement(el);
-            if (typeof options.onDrop === 'function') options.onDrop(entry);
-            else schedulePersist();
-        }
-        el.addEventListener('pointerdown', onDown, { passive: false });
-        window.addEventListener('pointermove', onMove, { passive: false });
-        window.addEventListener('pointerup', onUp);
-        window.addEventListener('pointercancel', onUp);
+            currentX = t.x;
+            currentY = t.y;
+        };
+        syncFromTransform();
+
+        window.interact(el).unset();
+        window.interact(el).draggable({
+            inertia: { resistance: 12, minSpeed: 80, endSpeed: 10 },
+            listeners: {
+                start(event) {
+                    if (isZoomOpen) {
+                        event.interaction.stop();
+                        return;
+                    }
+                    syncFromTransform();
+                    zCounter += 1;
+                    el.style.zIndex = String(10 + zCounter);
+                    el.style.cursor = 'grabbing';
+                },
+                move(event) {
+                    if (isZoomOpen) return;
+                    currentX += event.dx;
+                    currentY += event.dy;
+                    const { minX, minY, maxX, maxY } = getAllowedBoundsFor(el);
+                    currentX = clamp(currentX, minX, maxX);
+                    currentY = clamp(currentY, minY, maxY);
+                    setTranslate(el, currentX, currentY);
+                },
+                end(event) {
+                    el.style.cursor = 'grab';
+                    if (isZoomOpen) return;
+                    const rect = el.getBoundingClientRect();
+                    const cx = currentX + rect.width / 2;
+                    const cy = currentY + rect.height / 2;
+                    if (isPointInGraveyard(cx, cy)) {
+                        moveCardToGraveyard(el);
+                    } else {
+                        const snapped = snapToFor(el, currentX, currentY);
+                        moveElementTo(el, snapped.x, snapped.y);
+                    }
+                    syncFromTransform();
+                    const entry = updateCacheForElement(el);
+                    if (typeof options.onDrop === 'function') options.onDrop(entry);
+                    else schedulePersist();
+                },
+            },
+            modifiers: [
+                window.interact.modifiers.restrictRect({
+                    restriction: container,
+                    endOnly: true,
+                }),
+            ],
+        });
+
+        window.interact(el).on('doubletap', (event) => {
+            event.preventDefault();
+            openZoom(el.src);
+        });
     }
 
     function createBoardCard(src, options = {}) {
@@ -941,6 +831,9 @@ if (!draggable || !container) {
             });
         });
     }
+
+    attachDragTo(draggable);
+    requestAnimationFrame(() => clampElementIntoBounds(draggable));
 
     setupHandCardZoom();
 }
