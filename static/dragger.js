@@ -7,6 +7,10 @@ if (!draggable || !container) {
     draggable.setAttribute('draggable', 'false');
     draggable.addEventListener('dragstart', (e) => e.preventDefault());
 
+    if (typeof window.interact !== 'function' && typeof window.interactjs === 'function') {
+        window.interact = window.interactjs;
+    }
+
     draggable.style.willChange = 'transform';
     draggable.style.transition = 'transform 90ms ease-out';
     ensureCardId(draggable);
@@ -29,6 +33,7 @@ if (!draggable || !container) {
     const deckContainer = document.getElementById('deck');
     const deckStack = deckContainer ? deckContainer.querySelector('.stack') : null;
     const deckCountLabel = deckContainer ? deckContainer.querySelector('.count') : null;
+    const deckBackSrc = deckContainer ? deckContainer.dataset.cardBack : null;
     const normalizedCache = new Map();
     let deckState = [];
     let latestState = null;
@@ -142,8 +147,12 @@ if (!draggable || !container) {
             return;
         }
         deckStack.innerHTML = '';
-        if (!Array.isArray(deckState) || deckState.length === 0) {
-            if (deckCountLabel) deckCountLabel.textContent = '0';
+        const hasCards = Array.isArray(deckState) && deckState.length > 0;
+        deckStack.classList.toggle('is-empty', !hasCards);
+        deckStack.setAttribute('aria-disabled', String(!hasCards));
+        if (deckCountLabel) deckCountLabel.textContent = hasCards ? String(deckState.length) : '0';
+        if (!hasCards) {
+            deckStack.setAttribute('aria-label', 'Leerer Deck Stapel');
             return;
         }
         const maxVisible = Math.min(deckState.length, 5);
@@ -152,14 +161,15 @@ if (!draggable || !container) {
             if (!entry || !entry.card_src) return;
             const img = document.createElement('img');
             img.className = 'deck-card';
-            img.src = entry.card_src;
-            img.alt = 'Deck card';
-            img.dataset.cardId = entry.card_id;
+            img.src = deckBackSrc || entry.card_src;
+            img.alt = 'Rückseite der Karte im Deck';
+            if (entry.card_id) img.dataset.cardId = entry.card_id;
+            img.dataset.frontSrc = entry.card_src;
             const offset = maxVisible - idx - 1;
             img.style.setProperty('--offset', offset);
             deckStack.appendChild(img);
         });
-        if (deckCountLabel) deckCountLabel.textContent = String(deckState.length);
+        deckStack.setAttribute('aria-label', `Deck Stapel, ${deckState.length} Karten`);
     }
 
     function setDeckState(entries) {
@@ -188,6 +198,20 @@ if (!draggable || !container) {
     }
 
     renderDeck();
+
+    if (deckStack) {
+        deckStack.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            drawCardFromDeck();
+        });
+        deckStack.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                drawCardFromDeck();
+            }
+        });
+    }
 
     function getStatePayload() {
         const board = collectBoardState();
@@ -226,6 +250,26 @@ if (!draggable || !container) {
         }
     }
 
+    function createHandCardElement(entry) {
+        if (!entry || !entry.card_src) return null;
+        const card = document.createElement('img');
+        card.className = 'card';
+        card.src = entry.card_src;
+        card.alt = 'Handkarte';
+        if (entry.card_id) card.dataset.cardId = entry.card_id;
+        ensureCardId(card);
+        return card;
+    }
+
+    function appendCardToHand(entry) {
+        if (!handStrip) return null;
+        const card = createHandCardElement(entry);
+        if (!card) return null;
+        handStrip.appendChild(card);
+        setupHandCardZoom();
+        return card;
+    }
+
     function rebuildHand(entries) {
         if (!handStrip) return;
         if (!Array.isArray(entries) || entries.length === 0) {
@@ -236,16 +280,24 @@ if (!draggable || !container) {
             return;
         }
         handStrip.innerHTML = '';
+        const frag = document.createDocumentFragment();
         entries.forEach((entry) => {
-            if (!entry || !entry.card_src) return;
-            const card = document.createElement('img');
-            card.className = 'card';
-            card.src = entry.card_src;
-            card.alt = 'Card';
-            if (entry.card_id) card.dataset.cardId = entry.card_id;
-            handStrip.appendChild(card);
+            const card = createHandCardElement(entry);
+            if (card) frag.appendChild(card);
         });
+        handStrip.appendChild(frag);
         setupHandCardZoom();
+    }
+
+    function drawCardFromDeck() {
+        if (!Array.isArray(deckState) || deckState.length === 0) return;
+        if (!handStrip) return;
+        const [topCard, ...rest] = deckState;
+        if (!topCard || !topCard.card_src) return;
+        deckState = rest;
+        renderDeck();
+        appendCardToHand({ card_id: topCard.card_id, card_src: topCard.card_src });
+        schedulePersist();
     }
 
     function applyLoadedState(state) {
@@ -346,14 +398,6 @@ if (!draggable || !container) {
             applyNormalizedPositions();
             clampAllBoardCards();
         });
-    });
-
-    window.addEventListener('beforeunload', () => {
-        try {
-            persistState({ keepalive: true });
-        } catch (error) {
-            console.warn('Unable to persist state on unload', error);
-        }
     });
 
     window.addEventListener('beforeunload', () => {
