@@ -213,7 +213,18 @@ def remove_card_from_deck(card_name):
 
 @app.route('/card_dragger')
 def open_carddragger():
-    return render_template('card_dragger.html')
+    user = session.get('username')
+    if user is None:
+        return redirect(url_for('open_reg_log'))
+
+    layout = load_card_layout(user) or {}
+    deck_entries = layout.get('deck', []) if isinstance(layout, dict) else []
+
+    return render_template(
+        'card_dragger.html',
+        initial_layout=layout,
+        initial_deck_size=len(deck_entries),
+    )
 
 
 @app.route('/api/card-positions', methods=['GET', 'POST'])

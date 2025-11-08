@@ -56,6 +56,30 @@ def test_card_positions_requires_auth(test_client):
     assert resp.status_code == 401
 
 
+def test_card_dragger_requires_auth(test_client):
+    resp = test_client.get('/card_dragger')
+    assert resp.status_code == 302
+    assert '/reglog' in resp.headers.get('Location', '')
+
+
+def test_card_dragger_includes_initial_layout(auth_client):
+    username = 'layout_tester'
+    user_id = transform_username_id(username)
+    with db.con:
+        cur = db.con.cursor()
+        cur.execute(
+            'INSERT INTO deck VALUES(?, ?, ?, ?)',
+            (user_id, 'Basic_spell_Spark_5_5.png', '5', 2),
+        )
+
+    resp = auth_client.get('/card_dragger')
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert 'Deck <span class="count">2</span>' in html
+    assert 'window.INITIAL_CARD_LAYOUT = {' in html
+    assert '/static/assetsFolder/Cards/Basic_spell_Spark_5_5.png' in html
+
+
 def test_card_positions_roundtrip(auth_client):
     payload = {
         'board': [
